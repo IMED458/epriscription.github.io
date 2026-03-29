@@ -275,6 +275,7 @@
     const HOME_TYPE = "home";
     const query = getQueryParams();
     const patientId = query.get("patientId") || "";
+    const normalizedPatientId = /^\d+$/.test(patientId) ? Number(patientId) : patientId;
 
     function getCurrentUserName() {
       try {
@@ -450,7 +451,7 @@
         const saved = await savePrescription({
           prescriptionId: currentPrescriptionId,
           type: HOME_TYPE,
-          patientId: Number(patientId),
+          patientId: normalizedPatientId,
           data: payload
         });
         currentPrescriptionId = String(saved.id);

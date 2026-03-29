@@ -14,6 +14,7 @@ import {
 
 const query = getQueryParams();
 const patientId = query.get("patientId") || "";
+const normalizedPatientId = /^\d+$/.test(patientId) ? Number(patientId) : patientId;
 let currentPrescriptionId = query.get("prescriptionId") || "";
 const isFresh = query.get("fresh") === "1";
 const STORAGE_SCOPE = patientId || "default";
@@ -409,7 +410,7 @@ async function saveHistory() {
   const saved = await savePrescription({
     prescriptionId: currentPrescriptionId,
     type: TEMPLATE_TYPE,
-    patientId: Number(patientId),
+    patientId: normalizedPatientId,
     data: {
       observation: getObservationPayload(),
       nurse: readNursePayload(),

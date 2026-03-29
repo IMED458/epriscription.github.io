@@ -13,6 +13,7 @@ import {
 
 const query = getQueryParams();
 const patientId = query.get("patientId") || "";
+const normalizedPatientId = /^\d+$/.test(patientId) ? Number(patientId) : patientId;
 let currentPrescriptionId = query.get("prescriptionId") || "";
 const STORAGE_SCOPE = patientId || "default";
 const LIVE_SYNC_STORAGE_KEY = `stationary24_live_sync_${STORAGE_SCOPE}`;
@@ -297,7 +298,7 @@ async function saveHistory() {
   const saved = await savePrescription({
     prescriptionId: currentPrescriptionId,
     type: "stationary24",
-    patientId: Number(patientId),
+    patientId: normalizedPatientId,
     data: {
       observation: observation?.observation || null,
       nurse,

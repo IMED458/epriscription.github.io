@@ -18,6 +18,7 @@ export default function StationaryForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [templates, setTemplates] = useState<any[]>([]);
+  const normalizedPatientId = id && /^\d+$/.test(id) ? Number(id) : id || "";
   
   const [formData, setFormData] = useState({
     diagnosis: "",
@@ -131,7 +132,7 @@ export default function StationaryForm() {
         await api.post("/prescriptions", {
           type: "stationary",
           data: formData,
-          patientId: parseInt(id!)
+          patientId: normalizedPatientId,
         });
       }
       toast.success("დანიშნულება წარმატებით შეინახა");

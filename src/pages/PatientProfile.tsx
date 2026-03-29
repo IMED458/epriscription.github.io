@@ -10,6 +10,15 @@ export default function PatientProfile() {
   const [patient, setPatient] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const buildFormUrl = (formType: "stationary24" | "home", params: Record<string, string>) => {
+    const appBase =
+      typeof window !== "undefined" && window.location.pathname !== "/"
+        ? window.location.pathname.replace(/\/$/, "")
+        : "";
+    const search = new URLSearchParams(params);
+    return `${appBase}/forms/${formType}/index.html?${search.toString()}`;
+  };
+
   useEffect(() => {
     fetchPatient();
   }, [id]);
@@ -32,11 +41,11 @@ export default function PatientProfile() {
       return;
     }
 
-    const basePath =
-      prescription.type === "stationary24"
-        ? "../forms/stationary24/index.html"
-        : "../forms/home/index.html";
-    window.location.href = `${basePath}?patientId=${id}&prescriptionId=${prescription.id}`;
+    const formType = prescription.type === "stationary24" ? "stationary24" : "home";
+    window.location.href = buildFormUrl(formType, {
+      patientId: String(id || ""),
+      prescriptionId: String(prescription.id),
+    });
   };
 
   const deletePrescription = async (prescriptionId: number) => {
@@ -137,7 +146,10 @@ export default function PatientProfile() {
             </button>
 
             <a 
-              href={`../forms/stationary24/index.html?patientId=${id}&fresh=1`}
+              href={buildFormUrl("stationary24", {
+                patientId: String(id || ""),
+                fresh: "1",
+              })}
               className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:border-orange-500 hover:shadow-md transition-all group"
             >
               <div className="flex items-center gap-4">
@@ -153,7 +165,10 @@ export default function PatientProfile() {
             </a>
 
             <a 
-              href={`../forms/home/index.html?patientId=${id}&fresh=1`}
+              href={buildFormUrl("home", {
+                patientId: String(id || ""),
+                fresh: "1",
+              })}
               className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:border-emerald-500 hover:shadow-md transition-all group"
             >
               <div className="flex items-center gap-4">
