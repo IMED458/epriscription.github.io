@@ -27,6 +27,15 @@ type PrintPrescriptionOptions = {
   items?: PrintableItem[];
 };
 
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function printPrescription({
   patient = {},
   prescription = {},
@@ -46,19 +55,26 @@ export function printPrescription({
   const DATE_COLS = 7;
   const SUB_ROWS = 4;
   const MAX_BLOCKS_PER_PAGE = 10;
-  const normalizedItems = items.length > 0
+  const ROW_HEIGHT = 12;
+  const BLOCK_HEIGHT = ROW_HEIGHT * SUB_ROWS;
+  const normalizedItems = (items.length > 0
     ? items
-    : [{ index: 1, text: "", time: "", dates: Array(DATE_COLS).fill("") }];
+    : [{ index: 1, text: "", time: "", dates: Array(DATE_COLS).fill("") }]).map((item, index) => ({
+      index: Number(item.index || index + 1),
+      text: String(item.text || ""),
+      time: String(item.time || ""),
+      dates: Array.from({ length: DATE_COLS }).map((_, dateIndex) => String(item.dates?.[dateIndex] || "")),
+    }));
 
   function buildTableBody(pageItems: PrintableItem[]) {
     let html = "";
 
     for (const item of pageItems) {
       const blockNum = Number(item.index || 0) || 0;
-      const text = String(item.text || "");
-      const time = String(item.time || "");
+      const text = escapeHtml(item.text || "");
+      const time = escapeHtml(item.time || "");
       const dates = Array.from({ length: DATE_COLS }).map((_, dateIndex) =>
-        String(item.dates?.[dateIndex] || "")
+        escapeHtml(item.dates?.[dateIndex] || "")
       );
 
       for (let subRow = 0; subRow < SUB_ROWS; subRow += 1) {
@@ -71,24 +87,37 @@ export function printPrescription({
           html += `<td rowspan="${SUB_ROWS}" style="
             border:1px solid #000;
             text-align:center;
-            vertical-align:middle;
+            vertical-align:top;
             font-size:8pt;
             padding:0;
-          ">${blockNum || ""}</td>`;
+            height:${BLOCK_HEIGHT}px;
+          "><div style="
+            height:${BLOCK_HEIGHT}px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+          ">${blockNum || ""}</div></td>`;
 
           html += `<td rowspan="${SUB_ROWS}" style="
             border:1px solid #000;
             vertical-align:top;
             font-size:8pt;
             padding:3px 5px;
-          ">${text}</td>`;
+            height:${BLOCK_HEIGHT}px;
+          "><div style="
+            height:${BLOCK_HEIGHT - 6}px;
+            max-height:${BLOCK_HEIGHT - 6}px;
+            overflow:hidden;
+            line-height:1.15;
+            word-break:break-word;
+          ">${text}</div></td>`;
         }
 
         html += `<td style="
           border-left:1px solid #000;
           border-right:1px solid #000;
           ${topBorder}
-          height:12px;
+          height:${ROW_HEIGHT}px;
           padding:0;
           font-size:8pt;
           text-align:center;
@@ -100,7 +129,7 @@ export function printPrescription({
             border-left:1px solid #000;
             border-right:1px solid #000;
             ${topBorder}
-            height:12px;
+            height:${ROW_HEIGHT}px;
             padding:0;
             font-size:8pt;
             text-align:center;
@@ -197,25 +226,25 @@ export function printPrescription({
       return `
       <div class="page">
         <div style="text-align:right;font-size:7pt;margin-bottom:3mm;line-height:1.6;">
-          ${num}<br/>დანართი 3<br/>ფორმა №IV-300-2/ა
+          ${escapeHtml(num)}<br/>დანართი 3<br/>ფორმა №IV-300-2/ა
         </div>
 
         <table style="width:100%;border-collapse:collapse;margin-bottom:0;">
           <tr>
             <td style="border:1px solid #000;padding:3px 6px;font-size:9pt;font-weight:bold;">
-              პაციენტი ${patientLine}
+              პაციენტი ${escapeHtml(patientLine)}
             </td>
           </tr>
           <tr>
             <td style="border:1px solid #000;border-top:none;padding:3px 6px;font-size:8pt;">
-              დიაგნოზი/ქირურგიული ჩარევა&nbsp;&nbsp;${prescription.diagnosis || ""}
+              დიაგნოზი/ქირურგიული ჩარევა&nbsp;&nbsp;${escapeHtml(prescription.diagnosis || "")}
             </td>
           </tr>
           <tr>
             <td style="border:1px solid #000;border-top:none;padding:3px 6px;font-size:8pt;">
-              ჰოსპიტალიზაციის თარიღი:&nbsp;${prescription.hospitalizationDate || ""}
+              ჰოსპიტალიზაციის თარიღი:&nbsp;${escapeHtml(prescription.hospitalizationDate || "")}
               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-              ქირურგიული ჩარევის თარიღი:&nbsp;${prescription.surgeryDate || ""}
+              ქირურგიული ჩარევის თარიღი:&nbsp;${escapeHtml(prescription.surgeryDate || "")}
             </td>
           </tr>
           <tr>
@@ -224,7 +253,7 @@ export function printPrescription({
               <span style="font-size:7pt;color:#444;">
                 (პრეპარატის დასახელება, ალერგიული რეაქციის ტიპი და ფორმა)
               </span>
-              ${prescription.allergy ? `<br/>${prescription.allergy}` : ""}
+              ${prescription.allergy ? `<br/>${escapeHtml(prescription.allergy)}` : ""}
             </td>
           </tr>
         </table>
@@ -236,12 +265,12 @@ export function printPrescription({
         <div style="font-size:8pt;margin-bottom:3mm;">
           განყოფილება&nbsp;
           <span style="display:inline-block;min-width:130px;border-bottom:1px solid #000;vertical-align:bottom;">
-            &nbsp;${prescription.department || ""}&nbsp;
+            &nbsp;${escapeHtml(prescription.department || "")}&nbsp;
           </span>
           &nbsp;&nbsp;&nbsp;&nbsp;
           პალატა №&nbsp;
           <span style="display:inline-block;min-width:50px;border-bottom:1px solid #000;vertical-align:bottom;">
-            &nbsp;${prescription.ward || ""}&nbsp;
+            &nbsp;${escapeHtml(prescription.ward || "")}&nbsp;
           </span>
         </div>
 

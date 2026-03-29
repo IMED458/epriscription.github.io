@@ -193,19 +193,14 @@ export default function StationaryForm() {
   const handlePrint = () => {
     if (!patient) return;
 
-    const printableItems = formData.medications
-      .map((medication) => ({
-        text: formatMedicationPrintLabel(medication),
-        time: String(medication?.time || "").trim(),
-        dates: Array.isArray(medication?.dates)
-          ? medication.dates.map((value: string) => String(value || "").trim()).slice(0, 7)
-          : Array(7).fill(""),
-      }))
-      .filter((item) => item.text || item.time || item.dates.some(Boolean))
-      .map((item, index) => ({
-        index: index + 1,
-        ...item,
-      }));
+    const printableItems = formData.medications.map((medication, index) => ({
+      index: index + 1,
+      text: formatMedicationPrintLabel(medication),
+      time: String(medication?.time || "").trim(),
+      dates: Array.isArray(medication?.dates)
+        ? medication.dates.map((value: string) => String(value || "").trim()).slice(0, 7)
+        : Array(7).fill(""),
+    }));
 
     printPrescription({
       patient: {
