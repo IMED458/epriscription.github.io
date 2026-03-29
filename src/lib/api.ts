@@ -524,6 +524,32 @@ const api = {
   },
 
   async delete(path: string) {
+    if (path.startsWith("/patients/")) {
+      await ensureDataSession();
+      const patientId = path.slice("/patients/".length);
+      const patientRef = doc(firebaseDb, "patients", patientId);
+      const patientSnap = await getDoc(patientRef);
+
+      if (!patientSnap.exists()) {
+        throw new Error("Patient not found");
+      }
+
+      const patient = normalizeRecord(patientSnap.data())!;
+      const prescriptionsToDelete = (await readAllPrescriptions()).filter((item) => {
+        if (String(item.patientId || "") === patientId) return true;
+        const metadata = extractPrescriptionMetadata(item);
+        return metadata.historyNumbers.has(String(patient.historyNumber || "").trim()) ||
+          metadata.personalIds.has(String(patient.personalId || "").trim());
+      });
+
+      await Promise.all([
+        ...prescriptionsToDelete.map((item) => deleteDoc(doc(firebaseDb, "prescriptions", String(item.id)))),
+        deleteDoc(patientRef),
+      ]);
+
+      return toResponse({ ok: true, deletedPrescriptions: prescriptionsToDelete.length });
+    }
+
     if (path.startsWith("/prescriptions/")) {
       await ensureDataSession();
       const prescriptionId = path.slice("/prescriptions/".length);

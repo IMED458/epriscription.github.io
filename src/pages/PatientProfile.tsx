@@ -9,6 +9,7 @@ export default function PatientProfile() {
   const navigate = useNavigate();
   const [patient, setPatient] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [deletingPatient, setDeletingPatient] = useState(false);
 
   const buildFormUrl = (formType: "stationary24" | "home", params: Record<string, string>) => {
     const appBase =
@@ -56,6 +57,32 @@ export default function PatientProfile() {
       fetchPatient();
     } catch (err) {
       toast.error("ჩანაწერის წაშლა ვერ მოხერხდა");
+    }
+  };
+
+  const deletePatient = async () => {
+    if (!patient || deletingPatient) return;
+
+    const confirmed = window.confirm(
+      `ნამდვილად გსურთ პაციენტის "${patient.firstName} ${patient.lastName}" წაშლა? ეს მოქმედება წაშლის მის დანიშნულებების ისტორიასაც.`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingPatient(true);
+    try {
+      const res = await api.delete(`/patients/${id}`);
+      const deletedPrescriptions = Number(res.data?.deletedPrescriptions || 0);
+      toast.success(
+        deletedPrescriptions > 0
+          ? `პაციენტი წაიშალა და მოიხსნა ${deletedPrescriptions} დანიშნულებაც`
+          : "პაციენტი წაიშალა"
+      );
+      navigate("/");
+    } catch (err) {
+      toast.error("პაციენტის წაშლა ვერ მოხერხდა");
+    } finally {
+      setDeletingPatient(false);
     }
   };
 
@@ -182,6 +209,25 @@ export default function PatientProfile() {
               </div>
               <ExternalLink size={20} className="text-slate-300 group-hover:text-emerald-700" />
             </a>
+
+            <button
+              onClick={deletePatient}
+              disabled={deletingPatient}
+              className="flex items-center justify-between p-5 bg-white border border-red-200 rounded-2xl hover:border-red-500 hover:shadow-md transition-all group disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-red-50 text-red-700 rounded-xl flex items-center justify-center group-hover:bg-red-700 group-hover:text-white transition-all">
+                  <Trash2 size={24} />
+                </div>
+                <div className="text-left">
+                  <p className="font-bold text-slate-900">პაციენტის წაშლა</p>
+                  <p className="text-xs text-slate-500">
+                    {deletingPatient ? "მიმდინარეობს..." : "წაშლის პაციენტს და მის ისტორიას"}
+                  </p>
+                </div>
+              </div>
+              <Trash2 size={20} className="text-red-300 group-hover:text-red-700" />
+            </button>
           </div>
         </div>
 
