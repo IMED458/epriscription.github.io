@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8">
+  <title>ექთნის ხარჯთაღრიცხვის ფურცელი</title>
+  <link rel="icon" type="image/png" href="priscription.png">
+  <link rel="shortcut icon" type="image/png" href="priscription.png">
+  <link rel="stylesheet" href="assets/css/nurse.css">
+</head>
+<body>
+  <div id="firebaseStatus" class="status-connecting">მიმდინარეობს სისტემასთან დაკავშირება...</div>
+  <div class="c">
+    <div class="header"><b>ექთნის ხარჯთაღრიცხვის ფურცელი</b><br>თსსუ და ინგოროყვას კლინიკა</div>
+
+    <div class="nav">
+      <button class="btn" id="backBtn">უკან</button>
+      <button class="btn active" data-page="1">1</button>
+      <button class="btn" data-page="2">2</button>
+      <button class="btn" id="syncBtn">სინქრონიზაცია</button>
+      <button class="btn print" id="printBtn">ბეჭდვა</button>
+      <button class="btn" id="saveHistoryBtn">ისტორიაში შენახვა</button>
+      <button class="btn clear" id="clearBtn">გასუფთავება</button>
+      <input type="text" id="nurseTemplateName" placeholder="შაბლონის სახელი">
+      <button class="btn" id="nurseSaveBtn">შენახვა</button>
+      <button class="btn" id="nurseTemplatesBtn" style="background:#7c3aed;">შაბლონები</button>
+    </div>
+
+    <div class="page active" id="p1">
+      <div class="nurse-pdf-title">სტაციონარის პაციენტის ხარჯთაღრიცხვის<br>ფურცელი</div>
+      <div class="nurse-head">
+        <div class="row"><label>ისტორიის №:</label><input type="text" id="nurseHistoryNo"></div>
+        <div class="row"><label>დიაგნოზი:</label><input type="text" id="nurseDiagnosis"></div>
+        <div class="row"><label>სახელი და გვარი:</label><input type="text" id="nurseFullName"></div>
+        <div class="row"><label>შემოსვლის თარიღი:</label><input type="text" id="nurseAdmissionDate" class="date-field" inputmode="numeric" placeholder="დღე.თვე.წელი" maxlength="10" autocomplete="off"></div>
+      </div>
+      <table id="nurseExpense1" class="nurse-sheet"></table>
+    </div>
+
+    <div class="page" id="p2">
+      <table id="nurseExpense2" class="nurse-sheet"></table>
+    </div>
+  </div>
+
+  <div id="nurseTemplateModal">
+    <div>
+      <div class="head">ექთნის შაბლონები <span class="close" id="closeNurseTemplateModalTop">X</span></div>
+      <div class="body">
+        <div id="nurseTemplateItems"></div>
+        <div id="nurseNoTemplates">შაბლონები არ მოიძებნა</div>
+      </div>
+      <div style="padding:15px; background:#f8fafc; text-align:center;">
+        <button class="btn" style="background:#dc2626;" id="closeNurseTemplateModalBottom">დახურვა</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="assets/js/nurse.js"></script>
+</body>
+</html>

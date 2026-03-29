@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>სამედიცინო დანიშნულება</title>
+  <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+  <link rel="icon" type="image/png" href="danishnuleba.png">
+  <link rel="shortcut icon" type="image/png" href="danishnuleba.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --success: #10b981;
+      --danger: #ef4444;
+      --gray: #6b7280;
+      --light: #f8fafc;
+      --border: #e2e8f0;
+    }
+    body {
+      font-family: 'Roboto', 'BPG Nino Mtavruli', 'Sylfaen', sans-serif;
+      background: linear-gradient(to bottom, #f1f5f9, #e0e7ff);
+      min-height: 100vh;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+    }
+    .btn {
+      font-weight: 500;
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-success:hover { background: #059669; }
+    .btn-secondary { background: #64748b; color: white; }
+    .btn-secondary:hover { background: #475569; }
+    .btn-danger { background: var(--danger); color: white; }
+    .input-group {
+      position: relative;
+    }
+    .input-group label {
+      position: absolute;
+      top: -8px;
+      left: 12px;
+      background: white;
+      padding: 0 4px;
+      font-size: 0.75rem;
+      color: var(--primary);
+      font-weight: 500;
+    }
+    .input-field {
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      transition: border 0.2s;
+    }
+    .input-field:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+    .input-field.lookup-loading {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
+    }
+    .status-hint {
+      min-height: 1.25rem;
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--gray);
+    }
+    .status-hint[data-state="loading"] { color: var(--primary); }
+    .status-hint[data-state="success"] { color: #059669; }
+    .status-hint[data-state="error"] { color: var(--danger); }
+    .ql-toolbar {
+      border-top-left-radius: 8px;
+      border-top-right-radius: 8px;
+      border: 2px solid var(--border);
+      border-bottom: none;
+    }
+    .ql-container {
+      border-bottom-left-radius: 8px;
+      border-bottom-right-radius: 8px;
+      border: 2px solid var(--border);
+      border-top: none;
+    }
+    .ql-editor {
+      min-height: 220px;
+      font-family: inherit;
+      line-height: 1.2 !important;
+      padding: 14px 16px;
+      font-size: 15px;
+    }
+    .modal {
+      backdrop-filter: blur(8px);
+      background: rgba(0,0,0,0.4);
+    }
+    .toast {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1000;
+      animation: slide1 0.3s ease-out;
+    }
+    @keyframes slide1 {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .template-card {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      transition: all 0.2s;
+    }
+    .template-card:hover {
+      background: #eff6ff;
+      border-color: var(--primary);
+      transform: translateY(-2px);
+    }
+    .logo-container {
+      width: 9rem;
+      height: 6rem;
+      margin: 0 auto 1rem;
+      overflow: hidden;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .logo-container img {
+      max-width: 88%;
+      max-height: 88%;
+      object-fit: contain;
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div class="max-w-5xl mx-auto p-4 md:p-8">
+    <div class="card p-4 md:p-6 text-center mb-6">
+      <div class="flex justify-between items-start gap-3">
+        <button type="button" id="back-btn" class="btn btn-secondary">უკან</button>
+        <div class="flex-1">
+          <div class="logo-container">
+            <img src="tm_center_logo.png" alt="TM Center">
+          </div>
+          <h1 class="text-lg md:text-xl font-bold text-gray-800 leading-tight">
+            თბილისის სახელმწიფო სამედიცინო უნივერსიტეტისა და ინგოროყვას მაღალი სამედიცინო ტექნოლოგიების საუნივერსიტეტო კლინიკა
+          </h1>
+          <h2 class="text-lg md:text-xl font-bold text-blue-600 mt-2">სამედიცინო დანიშნულება</h2>
+        </div>
+        <div class="w-[78px]"></div>
+      </div>
+    </div>
+
+    <div class="card p-6 md:p-8 mb-6">
+      <form id="prescription-form">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div class="input-group">
+            <label>პაციენტი</label>
+            <input type="text" id="patient-name" class="input-field w-full" placeholder="ნინო გელაშვილი">
+          </div>
+          <div class="input-group">
+            <label>ისტორიის №</label>
+            <input type="text" id="history-number" class="input-field w-full" placeholder="2024-001234">
+            <p id="history-lookup-status" class="status-hint" aria-live="polite"></p>
+          </div>
+          <div class="input-group">
+            <label>თარიღი</label>
+            <input type="date" id="date" class="input-field w-full">
+          </div>
+          <div class="input-group">
+            <label>ექიმი</label>
+            <input type="text" id="doctor-name" class="input-field w-full" placeholder="ნინო კიკვაძე">
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-3 mb-6">
+          <button type="button" id="open-templates-btn" class="btn btn-primary">შაბლონები</button>
+          <button type="button" id="save-template-btn" class="btn btn-success">შაბლონის შენახვა</button>
+          <button type="button" id="save-history-btn" class="btn btn-success">ისტორიაში შენახვა</button>
+        </div>
+
+        <div class="mb-6">
+          <label class="block text-sm font-semibold text-gray-700 mb-2">დანიშნულება</label>
+          <div id="editor" style="height: 220px;"></div>
+        </div>
+
+        <div class="mb-5 flex items-center">
+          <input type="checkbox" id="require-patient-signature" class="mr-2">
+          <label for="require-patient-signature" class="text-sm font-medium text-gray-700">პაციენტის ხელმოწერა</label>
+        </div>
+
+        <div class="flex flex-wrap gap-3 justify-end">
+          <button type="button" id="clear-btn" class="btn btn-secondary">გასუფთავება</button>
+          <button type="button" id="print-btn" class="btn btn-primary text-lg font-semibold">ბეჭდვა</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="templates-modal" class="fixed inset-0 modal hidden items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 max-h-[85vh] overflow-hidden flex flex-col">
+      <div class="p-5 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-blue-50 to-indigo-50">
+        <h3 class="text-xl font-bold text-gray-800">შაბლონები</h3>
+        <button id="close-templates-modal" class="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-white transition">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-5">
+        <p id="no-templates" class="text-center text-gray-500 py-12 text-lg">შაბლონები არ არის შენახული</p>
+        <div id="templates-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+      </div>
+      <div class="p-4 border-t border-gray-200 bg-gray-50 text-right">
+        <button id="close-templates-btn" class="btn btn-secondary">დახურვა</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="save-template-modal" class="fixed inset-0 modal hidden items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
+      <h3 class="text-xl font-bold text-gray-800 mb-4">შაბლონის შენახვა</h3>
+      <div class="input-group mb-5">
+        <label>შაბლონის სახელი</label>
+        <input type="text" id="template-name-input" class="input-field w-full" placeholder="მაგ: ანტიბიოტიკები">
+      </div>
+      <div class="flex justify-end gap-3">
+        <button id="cancel-save-template" class="btn btn-secondary">გაუქმება</button>
+        <button id="confirm-save-template" class="btn btn-success">შენახვა</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      getQueryParams,
+      fetchPatient,
+      fetchRegistryPatient,
+      fetchPrescription,
+      fetchTemplates,
+      saveTemplate,
+      deleteTemplate,
+      savePrescription,
+      replaceQueryParam,
+      goToPatientProfile,
+      normalizeDateToInput,
+      formatDateForSlashDisplay
+    } from "../common/clinic-api.js";
+
+    let quill;
+    let templates = [];
+    let historyLookupTimer = null;
+    let historyLookupRequestSeq = 0;
+    let lastAutoFilledPatientName = "";
+    let currentPrescriptionId = "";
+    const HOME_TYPE = "home";
+    const query = getQueryParams();
+    const patientId = query.get("patientId") || "";
+
+    function getCurrentUserName() {
+      try {
+        const user = JSON.parse(window.localStorage.getItem("user") || "null");
+        return user?.name || "";
+      } catch (_) {
+        return "";
+      }
+    }
+
+    function formatGeorgianDate(dateString) {
+      return formatDateForSlashDisplay(dateString) || "-";
+    }
+
+    function showToast(msg, type = "success") {
+      const toast = document.createElement("div");
+      toast.className = `toast px-5 py-3 rounded-lg text-white font-medium shadow-lg flex items-center gap-2 ${type === "error" ? "bg-red-500" : "bg-green-500"}`;
+      toast.textContent = msg;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function setHistoryLookupStatus(message = "", state = "") {
+      const statusEl = document.getElementById("history-lookup-status");
+      const historyInput = document.getElementById("history-number");
+      if (!statusEl || !historyInput) return;
+      statusEl.textContent = message;
+      statusEl.dataset.state = state;
+      historyInput.classList.toggle("lookup-loading", state === "loading");
+    }
+
+    function getFormPayload() {
+      return {
+        patientName: document.getElementById("patient-name").value.trim(),
+        historyNumber: document.getElementById("history-number").value.trim(),
+        date: document.getElementById("date").value,
+        doctorName: document.getElementById("doctor-name").value.trim(),
+        contentHtml: quill.root.innerHTML || "<p><br></p>",
+        requirePatientSignature: document.getElementById("require-patient-signature").checked
+      };
+    }
+
+    function applyFormPayload(data = {}) {
+      document.getElementById("patient-name").value = data.patientName || "";
+      document.getElementById("history-number").value = data.historyNumber || "";
+      document.getElementById("date").value = normalizeDateToInput(data.date) || new Date().toISOString().split("T")[0];
+      document.getElementById("doctor-name").value = data.doctorName || getCurrentUserName();
+      quill.root.innerHTML = data.contentHtml || "<p><br></p>";
+      document.getElementById("require-patient-signature").checked = Boolean(data.requirePatientSignature);
+    }
+
+    async function hydratePatient() {
+      if (!patientId) return;
+      try {
+        const patient = await fetchPatient(patientId);
+        document.getElementById("patient-name").value = `${patient.firstName} ${patient.lastName}`.trim();
+        document.getElementById("history-number").value = patient.historyNumber || "";
+        if (!document.getElementById("doctor-name").value.trim()) {
+          document.getElementById("doctor-name").value = getCurrentUserName();
+        }
+      } catch (error) {
+        showToast("პაციენტის ჩატვირთვა ვერ მოხერხდა", "error");
+      }
+    }
+
+    async function hydratePrescription() {
+      const prescriptionId = query.get("prescriptionId") || "";
+      if (!prescriptionId) return;
+      try {
+        const prescription = await fetchPrescription(prescriptionId);
+        currentPrescriptionId = String(prescription.id);
+        applyFormPayload(JSON.parse(prescription.data || "{}"));
+      } catch (error) {
+        showToast("ისტორიიდან ჩანაწერის ჩატვირთვა ვერ მოხერხდა", "error");
+      }
+    }
+
+    async function loadTemplates() {
+      try {
+        templates = await fetchTemplates(HOME_TYPE);
+        renderTemplatesInModal();
+      } catch (error) {
+        showToast("შაბლონების ჩატვირთვა ვერ მოხერხდა", "error");
+      }
+    }
+
+    async function saveTemplateHandler() {
+      const name = document.getElementById("template-name-input").value.trim();
+      const payload = getFormPayload();
+      const content = payload.contentHtml.trim();
+      if (!name || !content || content === "<p><br></p>") {
+        showToast("შეავსეთ სახელი და დანიშნულება", "error");
+        return;
+      }
+      try {
+        await saveTemplate({
+          name,
+          type: HOME_TYPE,
+          data: payload
+        });
+        hideSaveTemplateModal();
+        await loadTemplates();
+        showToast("შაბლონი შეინახა");
+      } catch (error) {
+        showToast("შაბლონის შენახვა ვერ მოხერხდა", "error");
+      }
+    }
+
+    async function deleteTemplateHandler(id) {
+      if (!window.confirm("წაშლა?")) return;
+      try {
+        await deleteTemplate(id);
+        await loadTemplates();
+        showToast("შაბლონი წაიშალა");
+      } catch (error) {
+        showToast("შაბლონის წაშლა ვერ მოხერხდა", "error");
+      }
+    }
+
+    function renderTemplatesInModal() {
+      const grid = document.getElementById("templates-grid");
+      const noTemplates = document.getElementById("no-templates");
+      grid.innerHTML = "";
+      if (!templates.length) {
+        noTemplates.classList.remove("hidden");
+        return;
+      }
+      noTemplates.classList.add("hidden");
+
+      templates.forEach((template) => {
+        const data = typeof template.data === "string" ? JSON.parse(template.data) : template.data;
+        const card = document.createElement("div");
+        card.className = "template-card p-4";
+        card.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-800">${escapeHtml(template.name)}</h4>
+            </div>
+            <div class="flex gap-2">
+              <button class="text-blue-600 hover:text-blue-800 font-medium text-sm">ჩატვირთვა</button>
+              <button class="text-red-600 hover:text-red-800 font-medium text-sm">წაშლა</button>
+            </div>
+          </div>
+        `;
+        const [loadBtn, deleteBtn] = card.querySelectorAll("button");
+        loadBtn.onclick = () => {
+          applyFormPayload(data);
+          closeTemplatesModal();
+          showToast("შაბლონი ჩაიტვირთა");
+        };
+        deleteBtn.onclick = () => deleteTemplateHandler(template.id);
+        grid.appendChild(card);
+      });
+    }
+
+    async function saveHistory() {
+      const payload = getFormPayload();
+      if (!patientId) {
+        showToast("პაციენტის გარეშე შენახვა ვერ შესრულდება", "error");
+        return;
+      }
+      if (!payload.contentHtml || payload.contentHtml === "<p><br></p>") {
+        showToast("დანიშნულება ცარიელია", "error");
+        return;
+      }
+      try {
+        const saved = await savePrescription({
+          prescriptionId: currentPrescriptionId,
+          type: HOME_TYPE,
+          patientId: Number(patientId),
+          data: payload
+        });
+        currentPrescriptionId = String(saved.id);
+        replaceQueryParam("prescriptionId", currentPrescriptionId);
+        showToast("ისტორიაში შეინახა");
+      } catch (error) {
+        showToast("ისტორიაში შენახვა ვერ მოხერხდა", "error");
+      }
+    }
+
+    async function hydratePatientIdentityByHistory(historyNumber) {
+      const normalizedHistoryNumber = String(historyNumber || "").trim();
+      const lookupSeq = ++historyLookupRequestSeq;
+
+      if (!normalizedHistoryNumber) {
+        if (lastAutoFilledPatientName && document.getElementById("patient-name").value.trim() === lastAutoFilledPatientName) {
+          document.getElementById("patient-name").value = "";
+        }
+        lastAutoFilledPatientName = "";
+        setHistoryLookupStatus("", "");
+        return;
+      }
+
+      setHistoryLookupStatus("პაციენტს ვეძებ რეესტრში...", "loading");
+      try {
+        const patient = await fetchRegistryPatient(normalizedHistoryNumber);
+        if (lookupSeq !== historyLookupRequestSeq) return;
+        const fullName = [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim();
+        if (fullName) {
+          document.getElementById("patient-name").value = fullName;
+          lastAutoFilledPatientName = fullName;
+        }
+        setHistoryLookupStatus(`ნაპოვნია: ${fullName}`, "success");
+      } catch (error) {
+        if (lookupSeq !== historyLookupRequestSeq) return;
+        setHistoryLookupStatus("ასეთი ისტორიის ნომერი ვერ მოიძებნა", "error");
+      }
+    }
+
+    function scheduleHistoryLookup(immediate = false) {
+      if (historyLookupTimer) clearTimeout(historyLookupTimer);
+      historyLookupTimer = setTimeout(() => {
+        hydratePatientIdentityByHistory(document.getElementById("history-number").value);
+      }, immediate ? 0 : 320);
+    }
+
+    function closeTemplatesModal() {
+      document.getElementById("templates-modal").classList.add("hidden");
+      document.getElementById("templates-modal").classList.remove("flex");
+    }
+
+    function openTemplatesModal() {
+      renderTemplatesInModal();
+      document.getElementById("templates-modal").classList.remove("hidden");
+      document.getElementById("templates-modal").classList.add("flex");
+    }
+
+    function showSaveTemplateModal() {
+      const content = quill.root.innerHTML.trim();
+      if (!content || content === "<p><br></p>") {
+        showToast("დანიშნულება ცარიელია", "error");
+        return;
+      }
+      document.getElementById("save-template-modal").classList.remove("hidden");
+      document.getElementById("save-template-modal").classList.add("flex");
+      document.getElementById("template-name-input").focus();
+    }
+
+    function hideSaveTemplateModal() {
+      document.getElementById("save-template-modal").classList.add("hidden");
+      document.getElementById("save-template-modal").classList.remove("flex");
+      document.getElementById("template-name-input").value = "";
+    }
+
+    function handleClear() {
+      if (historyLookupTimer) clearTimeout(historyLookupTimer);
+      historyLookupRequestSeq += 1;
+      lastAutoFilledPatientName = "";
+      document.getElementById("patient-name").value = "";
+      document.getElementById("history-number").value = "";
+      document.getElementById("date").value = new Date().toISOString().split("T")[0];
+      document.getElementById("doctor-name").value = getCurrentUserName();
+      quill.setContents([]);
+      document.getElementById("require-patient-signature").checked = false;
+      setHistoryLookupStatus("", "");
+    }
+
+    function handlePrint() {
+      const data = getFormPayload();
+      const printWin = window.open("", "_blank");
+      const logoUrl = new URL("tm_center_logo.png", window.location.href).toString();
+      const patientSigHtml = data.requirePatientSignature ? `
+        <div style="margin-top: 1.2rem; text-align: right; font-size: 12pt;">
+          <p style="margin:0;">გავეცანი, ჩავიბარე,</p>
+          <p style="margin-top: 0.4rem;">პაციენტის ხელმოწერა: _________________</p>
+        </div>` : "";
+
+      printWin.document.write(`
+        <!doctype html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>დანიშნულება</title>
+          <style>
+            @page { margin: 1.5cm 1.5cm 2cm 1.5cm; }
+            body { font-family: 'BPG Nino Mtavruli', sans-serif; font-size: 12pt; line-height: 1.2; margin: 0; }
+            .header { text-align: center; margin-top: -1cm; padding-bottom: 0.5rem; border-bottom: 2px solid #000; }
+            .logo { width: 150px; height: 100px; object-fit: contain; margin-bottom: 0.3rem; }
+            .clinic-name { font-size: 12pt; font-weight: bold; margin: 0.2rem 0; }
+            .print-field { display: flex; gap: 1rem; margin: 0.8rem 0; font-size: 12pt; }
+            .label { font-weight: bold; width: 120px; flex-shrink: 0; }
+            .prescription { border: 1.5px solid #000; padding: 1rem; min-height: 200px; margin: 1.5rem 0; line-height: 1.2; font-size: 12pt; background: #fafafa; }
+            .signatures { margin-top: 1.5rem; display: flex; justify-content: space-between; font-size: 12pt; }
+            .doctor-sign, .patient-sign { width: 48%; }
+            .doctor-sign { text-align: left; }
+            .patient-sign { text-align: right; }
+            .sign-line { margin-top: 0.4rem; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <img src="${logoUrl}" class="logo" alt="Logo">
+            <div class="clinic-name">თბილისის სახელმწიფო სამედიცინო უნივერსიტეტისა და ინგოროყვას მაღალი სამედიცინო ტექნოლოგიების საუნივერსიტეტო კლინიკა</div>
+          </div>
+          <div class="print-field"><span class="label">პაციენტი:</span> ${data.patientName || "-"}</div>
+          <div class="print-field"><span class="label">ისტორია №:</span> ${data.historyNumber || "-"}</div>
+          <div class="print-field"><span class="label">თარიღი:</span> ${formatGeorgianDate(data.date)}</div>
+          <div class="prescription">${data.contentHtml || "<p>-</p>"}</div>
+          <div class="signatures">
+            <div class="doctor-sign">
+              <p style="margin:0;"><strong>ექიმი:</strong> ${data.doctorName || "-"}</p>
+              <p class="sign-line">ხელმოწერა: _________________</p>
+            </div>
+            <div class="patient-sign">${patientSigHtml}</div>
+          </div>
+        </body>
+        </html>
+      `);
+      printWin.document.close();
+      setTimeout(() => printWin.print(), 600);
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      quill = new Quill("#editor", {
+        theme: "snow",
+        modules: { toolbar: [["bold", "italic"], ["link"], [{ list: "ordered" }, { list: "bullet" }], ["clean"]] },
+        placeholder: "დაიწყეთ დანიშნულების აკრეფა..."
+      });
+
+      document.getElementById("date").value = new Date().toISOString().split("T")[0];
+      document.getElementById("doctor-name").value = getCurrentUserName();
+
+      document.getElementById("print-btn").addEventListener("click", handlePrint);
+      document.getElementById("clear-btn").addEventListener("click", handleClear);
+      document.getElementById("save-template-btn").addEventListener("click", showSaveTemplateModal);
+      document.getElementById("open-templates-btn").addEventListener("click", openTemplatesModal);
+      document.getElementById("cancel-save-template").addEventListener("click", hideSaveTemplateModal);
+      document.getElementById("confirm-save-template").addEventListener("click", saveTemplateHandler);
+      document.getElementById("close-templates-modal").addEventListener("click", closeTemplatesModal);
+      document.getElementById("close-templates-btn").addEventListener("click", closeTemplatesModal);
+      document.getElementById("templates-modal").addEventListener("click", (e) => e.target.id === "templates-modal" && closeTemplatesModal());
+      document.getElementById("save-template-modal").addEventListener("click", (e) => e.target.id === "save-template-modal" && hideSaveTemplateModal());
+      document.getElementById("save-history-btn").addEventListener("click", saveHistory);
+      document.getElementById("back-btn").addEventListener("click", () => goToPatientProfile(patientId));
+      document.getElementById("history-number").addEventListener("input", () => scheduleHistoryLookup(false));
+      document.getElementById("history-number").addEventListener("blur", () => scheduleHistoryLookup(true));
+
+      await loadTemplates();
+      await hydratePatient();
+      await hydratePrescription();
+      if (!document.getElementById("patient-name").value.trim()) {
+        scheduleHistoryLookup(true);
+      }
+    });
+  </script>
+</body>
+</html>

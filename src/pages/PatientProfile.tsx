@@ -26,6 +26,30 @@ export default function PatientProfile() {
     }
   };
 
+  const openPrescription = (prescription: any) => {
+    if (prescription.type === "stationary") {
+      navigate(`/patients/${id}/stationary?prescriptionId=${prescription.id}`);
+      return;
+    }
+
+    const basePath =
+      prescription.type === "stationary24"
+        ? "/forms/stationary24/index.html"
+        : "/forms/home/index.html";
+    window.location.href = `${basePath}?patientId=${id}&prescriptionId=${prescription.id}`;
+  };
+
+  const deletePrescription = async (prescriptionId: number) => {
+    if (!window.confirm("ნამდვილად გსურთ ჩანაწერის წაშლა?")) return;
+    try {
+      await api.delete(`/prescriptions/${prescriptionId}`);
+      toast.success("ჩანაწერი წაიშალა");
+      fetchPatient();
+    } catch (err) {
+      toast.error("ჩანაწერის წაშლა ვერ მოხერხდა");
+    }
+  };
+
   if (loading) return <div className="flex items-center justify-center h-64 text-slate-400">იტვირთება...</div>;
   if (!patient) return null;
 
@@ -97,7 +121,7 @@ export default function PatientProfile() {
           {/* Action Buttons */}
           <div className="grid grid-cols-1 gap-3">
             <button 
-              onClick={() => navigate(`/patients/${id}/stationary`)}
+              onClick={() => navigate(`/patients/${id}/stationary?fresh=1`)}
               className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:border-blue-500 hover:shadow-md transition-all group"
             >
               <div className="flex items-center gap-4">
@@ -113,9 +137,7 @@ export default function PatientProfile() {
             </button>
 
             <a 
-              href="https://priscription.imed.com.ge/" 
-              target="_blank" 
-              rel="noreferrer"
+              href={`/forms/stationary24/index.html?patientId=${id}&fresh=1`}
               className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:border-orange-500 hover:shadow-md transition-all group"
             >
               <div className="flex items-center gap-4">
@@ -131,9 +153,7 @@ export default function PatientProfile() {
             </a>
 
             <a 
-              href="https://danishnuleba.imed.com.ge/" 
-              target="_blank" 
-              rel="noreferrer"
+              href={`/forms/home/index.html?patientId=${id}&fresh=1`}
               className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:border-emerald-500 hover:shadow-md transition-all group"
             >
               <div className="flex items-center gap-4">
@@ -173,7 +193,7 @@ export default function PatientProfile() {
               ) : (
                 <div className="divide-y divide-slate-100">
                   {patient.prescriptions.map((pres: any) => (
-                    <div key={pres.id} className="p-6 hover:bg-slate-50 transition-colors flex items-center justify-between group">
+                    <div key={pres.id} className="p-6 hover:bg-slate-50 transition-colors flex items-center justify-between group cursor-pointer" onClick={() => openPrescription(pres)}>
                       <div className="flex items-center gap-4">
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                           pres.type === 'stationary' ? 'bg-blue-50 text-blue-700' : 
@@ -193,10 +213,10 @@ export default function PatientProfile() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                        <button className="p-2 text-slate-400 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all">
+                        <button onClick={(e) => { e.stopPropagation(); openPrescription(pres); }} className="p-2 text-slate-400 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all">
                           <Printer size={18} />
                         </button>
-                        <button className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
+                        <button onClick={(e) => { e.stopPropagation(); deletePrescription(pres.id); }} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
                           <Trash2 size={18} />
                         </button>
                       </div>

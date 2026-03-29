@@ -114,6 +114,50 @@ app.post("/api/prescriptions", authenticate, async (req: any, res) => {
   res.json(prescription);
 });
 
+app.get("/api/prescriptions/:id", authenticate, async (req, res) => {
+  const prescription = await prisma.prescription.findUnique({
+    where: { id: parseInt(req.params.id, 10) },
+    include: {
+      patient: true,
+    },
+  });
+
+  if (!prescription) {
+    return res.status(404).json({ error: "Prescription not found" });
+  }
+
+  res.json(prescription);
+});
+
+app.put("/api/prescriptions/:id", authenticate, async (req: any, res) => {
+  const { type, data } = req.body;
+
+  try {
+    const prescription = await prisma.prescription.update({
+      where: { id: parseInt(req.params.id, 10) },
+      data: {
+        ...(type ? { type } : {}),
+        ...(data !== undefined ? { data: JSON.stringify(data) } : {}),
+        updatedAt: new Date(),
+      },
+    });
+    res.json(prescription);
+  } catch (err) {
+    res.status(404).json({ error: "Prescription not found" });
+  }
+});
+
+app.delete("/api/prescriptions/:id", authenticate, async (req, res) => {
+  try {
+    await prisma.prescription.delete({
+      where: { id: parseInt(req.params.id, 10) },
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(404).json({ error: "Prescription not found" });
+  }
+});
+
 // Templates
 app.get("/api/templates", authenticate, async (req: any, res) => {
   const templates = await prisma.template.findMany({
@@ -139,6 +183,17 @@ app.post("/api/templates", authenticate, async (req: any, res) => {
     }
   });
   res.json(template);
+});
+
+app.delete("/api/templates/:id", authenticate, async (req: any, res) => {
+  try {
+    await prisma.template.delete({
+      where: { id: parseInt(req.params.id, 10) },
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(404).json({ error: "Template not found" });
+  }
 });
 
 // --- Vite Setup ---

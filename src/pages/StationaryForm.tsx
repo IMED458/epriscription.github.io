@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ChevronLeft, Printer, Save, Plus, Trash2, Copy, FileText, Layout } from "lucide-react";
 import api from "../lib/api";
 import { toast } from "sonner";
@@ -9,7 +9,10 @@ import html2canvas from "html2canvas";
 export default function StationaryForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const printRef = useRef<HTMLDivElement>(null);
+  const params = new URLSearchParams(location.search);
+  const prescriptionId = params.get("prescriptionId");
   
   const [patient, setPatient] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -29,9 +32,48 @@ export default function StationaryForm() {
   });
 
   useEffect(() => {
-    fetchPatient();
-    fetchTemplates();
-  }, [id]);
+    fetchInitialData();
+  }, [id, prescriptionId]);
+
+  const normalizeFormData = (data: any) => ({
+    diagnosis: data?.diagnosis || "",
+    hospitalizationDate: data?.hospitalizationDate || new Date().toISOString().split("T")[0],
+    surgeryDate: data?.surgeryDate || "",
+    allergy: data?.allergy || "",
+    department: data?.department || "",
+    room: data?.room || "",
+    medications: Array.isArray(data?.medications) && data.medications.length > 0
+      ? data.medications.map((med: any) => ({
+          id: med?.id || Date.now() + Math.random(),
+          name: med?.name || "",
+          description: med?.description || "",
+          time: med?.time || "",
+          dates: Array.isArray(med?.dates) ? med.dates.slice(0, 7).concat(Array(Math.max(0, 7 - med.dates.length)).fill("")).slice(0, 7) : Array(7).fill(""),
+        }))
+      : [{ id: Date.now(), name: "", description: "", time: "", dates: Array(7).fill("") }],
+  });
+
+  const fetchInitialData = async () => {
+    try {
+      const [patientRes, templatesRes] = await Promise.all([
+        api.get(`/patients/${id}`),
+        api.get("/templates"),
+      ]);
+      setPatient(patientRes.data);
+      setTemplates(templatesRes.data.filter((t: any) => t.type === "stationary"));
+
+      if (prescriptionId) {
+        const prescriptionRes = await api.get(`/prescriptions/${prescriptionId}`);
+        const parsed = JSON.parse(prescriptionRes.data.data || "{}");
+        setFormData(normalizeFormData(parsed));
+      }
+    } catch (err) {
+      toast.error("ფორმის ჩატვირთვა ვერ მოხერხდა");
+      navigate("/");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchPatient = async () => {
     try {
@@ -80,11 +122,18 @@ export default function StationaryForm() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await api.post("/prescriptions", {
-        type: "stationary",
-        data: formData,
-        patientId: parseInt(id!)
-      });
+      if (prescriptionId) {
+        await api.put(`/prescriptions/${prescriptionId}`, {
+          type: "stationary",
+          data: formData,
+        });
+      } else {
+        await api.post("/prescriptions", {
+          type: "stationary",
+          data: formData,
+          patientId: parseInt(id!)
+        });
+      }
       toast.success("დანიშნულება წარმატებით შეინახა");
       navigate(`/patients/${id}`);
     } catch (err) {
@@ -113,7 +162,7 @@ export default function StationaryForm() {
   const applyTemplate = (template: any) => {
     try {
       const data = JSON.parse(template.data);
-      setFormData({ ...formData, medications: data.medications });
+      setFormData(normalizeFormData(data));
       toast.success(`შაბლონი "${template.name}" გამოყენებულია`);
     } catch (err) {}
   };
@@ -261,6 +310,24 @@ export default function StationaryForm() {
                         onChange={(e) => updateMedication(med.id, "description", e.target.value)}
                       />
                     </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">რიცხვები</label>
+                      <div className="grid grid-cols-7 gap-2 mt-1">
+                        {med.dates.map((dateValue: string, dateIndex: number) => (
+                          <input
+                            key={dateIndex}
+                            type="text"
+                            className="w-full p-2 bg-white border border-slate-200 rounded-lg outline-none text-center text-xs"
+                            value={dateValue}
+                            onChange={(e) => {
+                              const nextDates = [...med.dates];
+                              nextDates[dateIndex] = e.target.value;
+                              updateMedication(med.id, "dates", nextDates);
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -294,115 +361,83 @@ export default function StationaryForm() {
         </div>
       </div>
 
-      {/* Hidden Print Version (Matching the provided PDF structure) */}
+      {/* Hidden Print Version */}
       <div className="fixed left-[-9999px] top-0">
-        <div ref={printRef} className="w-[210mm] min-h-[297mm] bg-white p-[15mm] text-[10pt] font-serif leading-tight text-black">
-          <div className="text-right text-[8pt] mb-2">
-            20032269103637.<br/>
-            დანართი 3<br/>
-            ფორმა №IV-300-2/ა
-          </div>
-          
-          <div className="border-b-2 border-black pb-2 mb-4">
-            <p className="font-bold text-[12pt]">პაციენტი: {patient.firstName} {patient.lastName}, ისტ # {patient.historyNumber}, პ/ნ: {patient.personalId}</p>
+        <div ref={printRef} className="relative w-[210mm] h-[297mm] overflow-hidden bg-white text-black" style={{ fontFamily: '"Times New Roman", "Sylfaen", serif' }}>
+          <img src="/assets/stationary-template.png" alt="" className="absolute inset-0 h-full w-full object-cover" />
+
+          <div className="absolute left-[14mm] top-[21.5mm] text-[11pt] font-bold">
+            პაციენტი: {patient.firstName} {patient.lastName}, იძ # {patient.historyNumber}, პ/ნ: {patient.personalId}
           </div>
 
-          <div className="space-y-3 mb-6">
-            <div className="flex gap-2">
-              <span className="font-bold min-w-[150px]">დიაგნოზი/ქირურგიული ჩარევა:</span>
-              <span className="border-b border-dotted border-black flex-1">{formData.diagnosis}</span>
-            </div>
-            <div className="flex gap-4">
-              <div className="flex gap-2 flex-1">
-                <span className="font-bold">ჰოსპიტალიზაციის თარიღი:</span>
-                <span className="border-b border-dotted border-black flex-1">{formData.hospitalizationDate}</span>
-              </div>
-              <div className="flex gap-2 flex-1">
-                <span className="font-bold">ქირურგიული ჩარევის თარიღი:</span>
-                <span className="border-b border-dotted border-black flex-1">{formData.surgeryDate}</span>
-              </div>
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="font-bold">ალერგია (პრეპარატის დასახელება, ალერგიული რეაქციის ტიპი და ფორმა):</span>
-              <span className="border-b border-dotted border-black min-h-[20px]">{formData.allergy}</span>
-            </div>
+          <div className="absolute left-[64mm] top-[31.8mm] w-[130mm] text-[9.5pt]">
+            {formData.diagnosis}
+          </div>
+          <div className="absolute left-[47mm] top-[41.5mm] w-[32mm] text-[9pt] text-center">
+            {formData.hospitalizationDate}
+          </div>
+          <div className="absolute left-[132mm] top-[41.5mm] w-[32mm] text-[9pt] text-center">
+            {formData.surgeryDate}
+          </div>
+          <div className="absolute left-[104mm] top-[51.2mm] w-[89mm] text-[9pt]">
+            {formData.allergy}
+          </div>
+          <div className="absolute left-[23mm] top-[88.8mm] w-[118mm] text-[9pt]">
+            {formData.department}
+          </div>
+          <div className="absolute left-[170mm] top-[88.8mm] w-[18mm] text-[9pt] text-center">
+            {formData.room}
           </div>
 
-          <div className="text-center font-bold text-[14pt] mb-4">ექიმის დანიშნულების ფურცელი</div>
-          
-          <div className="flex gap-4 mb-4">
-            <div className="flex gap-2 flex-1">
-              <span className="font-bold">განყოფილება:</span>
-              <span className="border-b border-dotted border-black flex-1">{formData.department}</span>
-            </div>
-            <div className="flex gap-2 w-1/4">
-              <span className="font-bold">პალატა №:</span>
-              <span className="border-b border-dotted border-black flex-1">{formData.room}</span>
-            </div>
+          <div className="absolute left-[14.5mm] top-[100.7mm] w-[182.5mm]">
+            <table className="w-full table-fixed border-collapse text-[7.2pt] leading-tight">
+              <colgroup>
+                <col style={{ width: "9mm" }} />
+                <col style={{ width: "88mm" }} />
+                <col style={{ width: "18mm" }} />
+                {Array.from({ length: 7 }).map((_, index) => (
+                  <col key={index} style={{ width: "9.7mm" }} />
+                ))}
+              </colgroup>
+              <tbody>
+                {Array.from({ length: 18 }).map((_, rowIndex) => {
+                  const medication = formData.medications[rowIndex];
+                  return (
+                    <tr key={rowIndex} className="h-[7.9mm] align-top">
+                      <td className="px-[1mm] pt-[1.2mm] text-center font-semibold">{medication ? rowIndex + 1 : ""}</td>
+                      <td className="px-[1.2mm] pt-[0.9mm]">
+                        {medication ? (
+                          <>
+                            <div className="font-semibold">{medication.name}</div>
+                            <div className="text-[6.5pt] italic">{medication.description}</div>
+                          </>
+                        ) : null}
+                      </td>
+                      <td className="px-[0.5mm] pt-[1.2mm] text-center">{medication?.time || ""}</td>
+                      {Array.from({ length: 7 }).map((_, dateIndex) => (
+                        <td key={dateIndex} className="px-[0.3mm] pt-[1.2mm] text-center">{medication?.dates?.[dateIndex] || ""}</td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
-          <table className="w-full border-collapse border border-black text-[9pt]">
-            <thead>
-              <tr>
-                <th className="border border-black p-1 w-8">№</th>
-                <th className="border border-black p-1">დანიშნულება</th>
-                <th className="border border-black p-1 w-16">დრო</th>
-                <th colSpan={7} className="border border-black p-1 text-center">რიცხვი</th>
-              </tr>
-              <tr>
-                <th className="border border-black p-1 h-6"></th>
-                <th className="border border-black p-1"></th>
-                <th className="border border-black p-1"></th>
-                {[...Array(7)].map((_, i) => <th key={i} className="border border-black p-1 w-10"></th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {formData.medications.map((med, i) => (
-                <tr key={i} className="min-h-[40px]">
-                  <td className="border border-black p-1 text-center">{i + 1}</td>
-                  <td className="border border-black p-1">
-                    <div className="font-bold">{med.name}</div>
-                    <div className="text-[8pt] italic">{med.description}</div>
-                  </td>
-                  <td className="border border-black p-1 text-center">{med.time}</td>
-                  {[...Array(7)].map((_, j) => <td key={j} className="border border-black p-1"></td>)}
-                </tr>
-              ))}
-              {/* Fill empty rows to maintain structure */}
-              {[...Array(Math.max(0, 15 - formData.medications.length))].map((_, i) => (
-                <tr key={`empty-${i}`} className="h-8">
-                  <td className="border border-black p-1"></td>
-                  <td className="border border-black p-1"></td>
-                  <td className="border border-black p-1"></td>
-                  {[...Array(7)].map((_, j) => <td key={j} className="border border-black p-1"></td>)}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div className="mt-8 space-y-4">
-            <div className="flex items-end gap-4">
-              <div className="flex-1">
-                <p className="font-bold">დანიშნულება შევასრულე</p>
-                <p className="text-[8pt]">მორიგე ექთანი</p>
-              </div>
-              <div className="border-b border-black w-64 h-6"></div>
-            </div>
-            <div className="flex items-end gap-4">
-              <div className="flex-1">
-                <p className="font-bold">დანიშნულება შევასრულე</p>
-                <p className="text-[8pt]">მორიგე ექიმი</p>
-              </div>
-              <div className="border-b border-black w-64 h-6"></div>
-            </div>
-            <div className="flex items-end gap-4">
-              <div className="flex-1">
-                <p className="font-bold">დანიშნულების შესრულებას ვადასტურებ</p>
-                <p className="text-[8pt]">მკურნალი ექიმი</p>
-              </div>
-              <div className="border-b border-black w-64 h-6"></div>
-            </div>
+          <div className="absolute left-0 top-[248mm] h-[49mm] w-full bg-white" />
+          <div className="absolute left-[14mm] top-[255.5mm] text-[9.2pt] leading-tight font-semibold">
+            დანიშნულება შევასრულე
+            <div className="text-[7.5pt] font-normal">მორიგე ექთანი</div>
           </div>
+          <div className="absolute left-[135mm] top-[260.5mm] h-0 w-[54mm] border-b border-black" />
+
+          <div className="absolute left-[135mm] top-[272.5mm] h-0 w-[54mm] border-b border-black" />
+
+          <div className="absolute left-[14mm] top-[278.8mm] text-[9pt] leading-tight font-semibold">
+            დანიშნულებების შესრულებას ვადასტურებ
+            <div className="text-[7.5pt] font-normal">მკურნალი ექიმი</div>
+          </div>
+          <div className="absolute left-[135mm] top-[283.8mm] h-0 w-[54mm] border-b border-black" />
         </div>
       </div>
     </div>
