@@ -45,19 +45,25 @@ export function printPrescription({
 
   const DATE_COLS = 7;
   const SUB_ROWS = 4;
+  const MAX_BLOCKS_PER_PAGE = 10;
+  const normalizedItems = items.length > 0
+    ? items
+    : [{ index: 1, text: "", time: "", dates: Array(DATE_COLS).fill("") }];
 
-  function buildTableBody(startIndex: number, count: number) {
+  function buildTableBody(pageItems: PrintableItem[]) {
     let html = "";
 
-    for (let blockOffset = 0; blockOffset < count; blockOffset += 1) {
-      const blockNum = startIndex + blockOffset;
-      const item = items.find((entry) => entry.index === blockNum);
-      const text = item?.text || "";
+    for (const item of pageItems) {
+      const blockNum = Number(item.index || 0) || 0;
+      const text = String(item.text || "");
+      const time = String(item.time || "");
+      const dates = Array.from({ length: DATE_COLS }).map((_, dateIndex) =>
+        String(item.dates?.[dateIndex] || "")
+      );
 
       for (let subRow = 0; subRow < SUB_ROWS; subRow += 1) {
         const isFirst = subRow === 0;
         const topBorder = isFirst ? "" : "border-top:1px solid #000;";
-        const timeText = isFirst ? item?.time || "" : "";
 
         html += "<tr>";
 
@@ -68,7 +74,7 @@ export function printPrescription({
             vertical-align:middle;
             font-size:8pt;
             padding:0;
-          ">${blockNum}</td>`;
+          ">${blockNum || ""}</td>`;
 
           html += `<td rowspan="${SUB_ROWS}" style="
             border:1px solid #000;
@@ -83,24 +89,23 @@ export function printPrescription({
           border-right:1px solid #000;
           ${topBorder}
           height:12px;
-          padding:0 3px;
-          font-size:7.5pt;
+          padding:0;
+          font-size:8pt;
           text-align:center;
           vertical-align:middle;
-        ">${timeText}</td>`;
+        ">${isFirst ? time : ""}</td>`;
 
         for (let dateIndex = 0; dateIndex < DATE_COLS; dateIndex += 1) {
-          const dateText = isFirst ? String(item?.dates?.[dateIndex] || "") : "";
           html += `<td style="
             border-left:1px solid #000;
             border-right:1px solid #000;
             ${topBorder}
             height:12px;
             padding:0;
-            font-size:7.5pt;
+            font-size:8pt;
             text-align:center;
             vertical-align:middle;
-          ">${dateText}</td>`;
+          ">${isFirst ? dates[dateIndex] : ""}</td>`;
         }
 
         html += "</tr>";
@@ -110,7 +115,7 @@ export function printPrescription({
     return html;
   }
 
-  function tableHTML(startIndex: number, count: number) {
+  function tableHTML(pageItems: PrintableItem[]) {
     return `
     <table style="width:100%;border-collapse:collapse;table-layout:fixed;font-family:inherit;">
       <colgroup>
@@ -160,7 +165,7 @@ export function printPrescription({
         </tr>
       </thead>
       <tbody>
-        ${buildTableBody(startIndex, count)}
+        ${buildTableBody(pageItems)}
       </tbody>
     </table>`;
   }
@@ -179,16 +184,14 @@ export function printPrescription({
       </tr>
     </table>`;
 
-  const itemCount = items.length || 0;
-  const pageCounts = [6];
-  const extraPages = Math.max(1, Math.ceil(Math.max(itemCount - 6, 0) / 4));
-  for (let pageIndex = 0; pageIndex < extraPages; pageIndex += 1) {
-    pageCounts.push(4);
+  const pages: PrintableItem[][] = [];
+  for (let index = 0; index < normalizedItems.length; index += MAX_BLOCKS_PER_PAGE) {
+    pages.push(normalizedItems.slice(index, index + MAX_BLOCKS_PER_PAGE));
   }
+  if (pages.length === 0) pages.push(normalizedItems);
 
-  const pageSections = pageCounts.map((count, pageIndex) => {
-    const startIndex = pageIndex === 0 ? 1 : 7 + (pageIndex - 1) * 4;
-    const pageTable = tableHTML(startIndex, count);
+  const pageSections = pages.map((pageItems, pageIndex) => {
+    const pageTable = tableHTML(pageItems);
 
     if (pageIndex === 0) {
       return `
