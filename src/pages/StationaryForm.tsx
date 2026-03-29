@@ -3,7 +3,6 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ChevronLeft, Printer, Save, Plus, Trash2, Copy, FileText, Layout } from "lucide-react";
 import api from "../lib/api";
 import { toast } from "sonner";
-import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 export default function StationaryForm() {
@@ -181,18 +180,103 @@ export default function StationaryForm() {
 
   const handlePrint = async () => {
     if (!printRef.current) return;
+    const printWindow = window.open("", "_blank", "width=980,height=1400");
+
+    if (!printWindow) {
+      toast.error("ბეჭდვის ფანჯარა ვერ გაიხსნა. დაუშვით pop-up და სცადეთ თავიდან.");
+      return;
+    }
+
+    printWindow.document.write(`
+      <!doctype html>
+      <html lang="ka">
+        <head>
+          <meta charset="utf-8" />
+          <title>მზადდება ბეჭდვა...</title>
+          <style>
+            html, body {
+              margin: 0;
+              padding: 0;
+              background: #ffffff;
+              font-family: "Times New Roman", "Sylfaen", serif;
+            }
+            body {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              color: #334155;
+            }
+          </style>
+        </head>
+        <body>ბეჭდვის გვერდი მზადდება...</body>
+      </html>
+    `);
+    printWindow.document.close();
+
     const canvas = await html2canvas(printRef.current, {
       scale: 3,
       backgroundColor: "#ffffff",
       useCORS: true,
     });
     const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF("p", "mm", "a4");
-    const imgProps = pdf.getImageProperties(imgData);
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`stationary_${patient.lastName}_${patient.historyNumber}.pdf`);
+
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!doctype html>
+      <html lang="ka">
+        <head>
+          <meta charset="utf-8" />
+          <title>სტაციონარის ბეჭდვა</title>
+          <style>
+            @page {
+              size: A4;
+              margin: 0;
+            }
+
+            html, body {
+              margin: 0;
+              padding: 0;
+              background: #ffffff;
+            }
+
+            body {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+
+            img {
+              display: block;
+              width: 210mm;
+              height: 297mm;
+              margin: 0 auto;
+            }
+
+            @media screen {
+              body {
+                background: #e2e8f0;
+                padding: 16px 0;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <img src="${imgData}" alt="სტაციონარის საბეჭდი გვერდი" />
+          <script>
+            window.addEventListener("load", function () {
+              setTimeout(function () {
+                window.focus();
+                window.print();
+              }, 150);
+            });
+            window.addEventListener("afterprint", function () {
+              window.close();
+            });
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   if (loading) return <div className="p-10 text-center">იტვირთება...</div>;
@@ -213,7 +297,7 @@ export default function StationaryForm() {
           </button>
           <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-all">
             <Printer size={18} />
-            <span>ბეჭდვა / PDF</span>
+            <span>ბეჭდვა</span>
           </button>
           <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-6 py-2 bg-blue-700 text-white rounded-xl font-bold hover:bg-blue-800 transition-all shadow-md">
             <Save size={18} />
