@@ -9,7 +9,7 @@ import {
   replaceQueryParam,
   goToPatientProfile,
   formatDateForDisplay,
-} from "../../common/clinic-api.js";
+} from "../../../common/clinic-api.js";
 
 const query = getQueryParams();
 const patientId = query.get("patientId") || "";
