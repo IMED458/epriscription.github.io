@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ChevronLeft, Printer, Save, Plus, Trash2, Copy, FileText, Layout } from "lucide-react";
 import api from "../lib/api";
+import { printPrescription } from "../lib/printPrescription";
 import { toast } from "sonner";
-import html2canvas from "html2canvas";
 
 export default function StationaryForm() {
   const { id } = useParams();
@@ -185,105 +185,39 @@ export default function StationaryForm() {
     } catch (err) {}
   };
 
-  const handlePrint = async () => {
-    if (!printRef.current) return;
-    const printWindow = window.open("", "_blank", "width=980,height=1400");
+  const handlePrint = () => {
+    if (!patient) return;
 
-    if (!printWindow) {
-      toast.error("ბეჭდვის ფანჯარა ვერ გაიხსნა. დაუშვით pop-up და სცადეთ თავიდან.");
-      return;
-    }
+    const printableItems = formData.medications
+      .map((medication) => ({
+        text: formatMedicationPrintLabel(medication),
+        time: String(medication?.time || "").trim(),
+        dates: Array.isArray(medication?.dates)
+          ? medication.dates.map((value: string) => String(value || "").trim()).slice(0, 7)
+          : Array(7).fill(""),
+      }))
+      .filter((item) => item.text || item.time || item.dates.some(Boolean))
+      .map((item, index) => ({
+        index: index + 1,
+        ...item,
+      }));
 
-    printWindow.document.write(`
-      <!doctype html>
-      <html lang="ka">
-        <head>
-          <meta charset="utf-8" />
-          <title>მზადდება ბეჭდვა...</title>
-          <style>
-            html, body {
-              margin: 0;
-              padding: 0;
-              background: #ffffff;
-              font-family: "Times New Roman", "Sylfaen", serif;
-            }
-            body {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              min-height: 100vh;
-              color: #334155;
-            }
-          </style>
-        </head>
-        <body>ბეჭდვის გვერდი მზადდება...</body>
-      </html>
-    `);
-    printWindow.document.close();
-
-    const canvas = await html2canvas(printRef.current, {
-      scale: 3,
-      backgroundColor: "#ffffff",
-      useCORS: true,
+    printPrescription({
+      patient: {
+        name: `${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
+        historyNumber: patient.historyNumber || "",
+        personalId: patient.personalId || "",
+      },
+      prescription: {
+        diagnosis: formData.diagnosis,
+        hospitalizationDate: formatPrintDate(formData.hospitalizationDate),
+        surgeryDate: formatPrintDate(formData.surgeryDate),
+        allergy: formData.allergy,
+        department: formData.department,
+        ward: formData.room,
+      },
+      items: printableItems,
     });
-    const imgData = canvas.toDataURL("image/png");
-
-    printWindow.document.open();
-    printWindow.document.write(`
-      <!doctype html>
-      <html lang="ka">
-        <head>
-          <meta charset="utf-8" />
-          <title>სტაციონარის ბეჭდვა</title>
-          <style>
-            @page {
-              size: A4;
-              margin: 0;
-            }
-
-            html, body {
-              margin: 0;
-              padding: 0;
-              background: #ffffff;
-            }
-
-            body {
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-
-            img {
-              display: block;
-              width: 210mm;
-              height: 297mm;
-              margin: 0 auto;
-            }
-
-            @media screen {
-              body {
-                background: #e2e8f0;
-                padding: 16px 0;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <img src="${imgData}" alt="სტაციონარის საბეჭდი გვერდი" />
-          <script>
-            window.addEventListener("load", function () {
-              setTimeout(function () {
-                window.focus();
-                window.print();
-              }, 150);
-            });
-            window.addEventListener("afterprint", function () {
-              window.close();
-            });
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
   };
 
   if (loading) return <div className="p-10 text-center">იტვირთება...</div>;
