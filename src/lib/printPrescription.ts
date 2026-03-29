@@ -55,7 +55,7 @@ export function printPrescription({
   const DATE_COLS = 7;
   const SUB_ROWS = 4;
   const MAX_BLOCKS_PER_PAGE = 10;
-  const ROW_HEIGHT = 12;
+  const ROW_HEIGHT = 15;
   const BLOCK_HEIGHT = ROW_HEIGHT * SUB_ROWS;
   const normalizedItems = (items.length > 0
     ? items
@@ -200,7 +200,7 @@ export function printPrescription({
         </tr>
         <tr>
           ${Array.from({ length: DATE_COLS })
-            .map(() => `<td style="border:1px solid #000;height:10px;padding:0;"></td>`)
+            .map(() => `<td style="border:1px solid #000;height:12px;padding:0;"></td>`)
             .join("")}
         </tr>
       </thead>
