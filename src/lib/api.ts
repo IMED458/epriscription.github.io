@@ -9,10 +9,8 @@ import {
 } from "firebase/firestore";
 import { ensureAnonymousFirebaseSession, firebaseAuth, firebaseDb } from "./firebase";
 
-const PATIENT_REGISTRY_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/1zsuLPC1hDVJ1pzGMsk_LY1bILCF6Dbd7/export?format=csv&gid=226530235";
-const PATIENT_REGISTRY_GVIZ_URL =
-  "https://docs.google.com/spreadsheets/d/1zsuLPC1hDVJ1pzGMsk_LY1bILCF6Dbd7/gviz/tq?gid=226530235";
+const PATIENT_REGISTRY_SPREADSHEET_ID = "1zsuLPC1hDVJ1pzGMsk_LY1bILCF6Dbd7";
+const PATIENT_REGISTRY_GIDS = ["226530235", "761247166", "991199225"];
 const STATIC_USERS = [
   {
     id: "admin",
@@ -184,6 +182,14 @@ function collectCandidateValues(...values: unknown[]) {
 
 let registryRowsPromise: Promise<string[][]> | null = null;
 
+function buildRegistryCsvUrl(gid: string) {
+  return `https://docs.google.com/spreadsheets/d/${PATIENT_REGISTRY_SPREADSHEET_ID}/export?format=csv&gid=${gid}`;
+}
+
+function buildRegistryGvizUrl(gid: string) {
+  return `https://docs.google.com/spreadsheets/d/${PATIENT_REGISTRY_SPREADSHEET_ID}/gviz/tq?gid=${gid}`;
+}
+
 function toRegistryCellValue(cell: any) {
   if (!cell) return "";
   return String(cell.f ?? cell.v ?? "").trim();
@@ -199,31 +205,53 @@ function convertRegistryTableToRows(payload: any) {
   return [headers, ...dataRows].filter((row) => row.some((value) => String(value || "").trim() !== ""));
 }
 
-async function loadRegistryRows() {
-  if (registryRowsPromise) {
-    return registryRowsPromise;
+function isRegistryHeaderRow(row: string[]) {
+  const normalized = row.map(normalizeHeader);
+  return normalized.includes("ისტn") && normalized.includes("სახელი") && normalized.includes("გვარი");
+}
+
+function mergeRegistrySheets(sheetRowsList: string[][][]) {
+  let headers: string[] = [];
+  const dataRows: string[][] = [];
+
+  for (const sheetRows of sheetRowsList) {
+    if (!Array.isArray(sheetRows) || sheetRows.length === 0) {
+      continue;
+    }
+
+    const [firstRow, ...restRows] = sheetRows;
+    const hasHeader = isRegistryHeaderRow(firstRow);
+
+    if (headers.length === 0 && hasHeader) {
+      headers = firstRow;
+    }
+
+    const rowsToAppend = hasHeader ? restRows : sheetRows;
+    rowsToAppend
+      .filter((row) => row.some((value) => String(value || "").trim() !== ""))
+      .forEach((row) => dataRows.push(row));
   }
 
-  if (typeof window === "undefined" || typeof document === "undefined") {
-    registryRowsPromise = fetch(PATIENT_REGISTRY_CSV_URL)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to fetch from registry");
-        }
-        return response.text();
-      })
-      .then(parseCsvRows)
-      .catch((error) => {
-        registryRowsPromise = null;
-        throw error;
-      });
-    return registryRowsPromise;
+  if (headers.length === 0 && sheetRowsList[0]?.[0]) {
+    headers = sheetRowsList[0][0];
   }
 
-  registryRowsPromise = new Promise<string[][]>((resolve, reject) => {
-    const callbackName = `__registryCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  return headers.length > 0 ? [headers, ...dataRows] : dataRows;
+}
+
+async function loadRegistryRowsForGid(gid: string) {
+  const response = await fetch(buildRegistryCsvUrl(gid));
+  if (!response.ok) {
+    throw new Error("Failed to fetch from registry");
+  }
+  return parseCsvRows(await response.text());
+}
+
+async function loadRegistryRowsForGidInBrowser(gid: string) {
+  return new Promise<string[][]>((resolve, reject) => {
+    const callbackName = `__registryCallback_${gid}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const script = document.createElement("script");
-    const url = new URL(PATIENT_REGISTRY_GVIZ_URL);
+    const url = new URL(buildRegistryGvizUrl(gid));
     url.searchParams.set("tqx", `responseHandler:${callbackName};out:json`);
 
     const cleanup = () => {
@@ -234,7 +262,6 @@ async function loadRegistryRows() {
     (window as any)[callbackName] = (payload: any) => {
       cleanup();
       if (payload?.status !== "ok") {
-        registryRowsPromise = null;
         reject(new Error("Failed to fetch from registry"));
         return;
       }
@@ -243,13 +270,32 @@ async function loadRegistryRows() {
 
     script.onerror = () => {
       cleanup();
-      registryRowsPromise = null;
       reject(new Error("Failed to fetch from registry"));
     };
 
     script.src = url.toString();
     document.head.appendChild(script);
-  }).catch((error) => {
+  });
+}
+
+async function loadRegistryRows() {
+  if (registryRowsPromise) {
+    return registryRowsPromise;
+  }
+
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    registryRowsPromise = Promise.all(PATIENT_REGISTRY_GIDS.map((gid) => loadRegistryRowsForGid(gid)))
+      .then(mergeRegistrySheets)
+      .catch((error) => {
+        registryRowsPromise = null;
+        throw error;
+      });
+    return registryRowsPromise;
+  }
+
+  registryRowsPromise = Promise.all(PATIENT_REGISTRY_GIDS.map((gid) => loadRegistryRowsForGidInBrowser(gid)))
+    .then(mergeRegistrySheets)
+    .catch((error) => {
     registryRowsPromise = null;
     throw error;
   });

@@ -156,6 +156,28 @@ export default function StationaryForm() {
     });
   };
 
+  const duplicateMedication = (medId: number) => {
+    const sourceIndex = formData.medications.findIndex((medication) => medication.id === medId);
+    if (sourceIndex === -1) return;
+
+    const sourceMedication = formData.medications[sourceIndex];
+    const duplicatedMedication = {
+      ...sourceMedication,
+      id: Date.now() + Math.random(),
+      name: String(sourceMedication?.name || ""),
+      timeSlots: normalizeTimeSlots(sourceMedication?.timeSlots),
+      dates: normalizeDates(sourceMedication?.dates),
+    };
+
+    const nextMedications = [...formData.medications];
+    nextMedications.splice(sourceIndex + 1, 0, duplicatedMedication);
+
+    setFormData({
+      ...formData,
+      medications: applySharedDatesToMedications(nextMedications),
+    });
+  };
+
   const updateMedication = (medId: number, field: string, value: any) => {
     const nextMedications = formData.medications.map((med) =>
       med.id === medId ? {
@@ -357,6 +379,13 @@ export default function StationaryForm() {
               <div className="space-y-4">
                 {formData.medications.map((med, idx) => (
                   <div key={med.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3 relative">
+                    <button
+                      onClick={() => duplicateMedication(med.id)}
+                      className="absolute top-4 right-10 text-slate-300 hover:text-blue-600"
+                      title="დუბლიკატი"
+                    >
+                      <Copy size={16} />
+                    </button>
                     <button onClick={() => removeMedication(med.id)} className="absolute top-4 right-4 text-slate-300 hover:text-red-500">
                       <Trash2 size={16} />
                     </button>
