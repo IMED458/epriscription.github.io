@@ -27,16 +27,22 @@ export default function StationaryForm() {
     department: "",
     room: "",
     medications: [
-      { id: Date.now(), name: "", description: "", time: "", dates: Array(7).fill("") }
+      { id: Date.now(), name: "", timeSlots: Array(4).fill(""), dates: Array(7).fill("") }
     ]
   });
 
   const createEmptyDates = () => Array(7).fill("");
+  const createEmptyTimeSlots = () => Array(4).fill("");
 
   const normalizeDates = (value: any) =>
     Array.isArray(value)
       ? value.slice(0, 7).concat(Array(Math.max(0, 7 - value.length)).fill("")).slice(0, 7)
       : createEmptyDates();
+
+  const normalizeTimeSlots = (value: any, legacyTime = "") =>
+    Array.isArray(value)
+      ? value.slice(0, 4).concat(Array(Math.max(0, 4 - value.length)).fill("")).slice(0, 4)
+      : [String(legacyTime || "").trim(), ...Array(3).fill("")];
 
   const getSharedMedicationDates = (medications: any[]) => {
     const source = medications.find((medication) =>
@@ -69,11 +75,10 @@ export default function StationaryForm() {
       ? applySharedDatesToMedications(data.medications.map((med: any) => ({
           id: med?.id || Date.now() + Math.random(),
           name: med?.name || "",
-          description: med?.description || "",
-          time: med?.time || "",
+          timeSlots: normalizeTimeSlots(med?.timeSlots, med?.time),
           dates: normalizeDates(med?.dates),
         })))
-      : [{ id: Date.now(), name: "", description: "", time: "", dates: createEmptyDates() }],
+      : [{ id: Date.now(), name: "", timeSlots: createEmptyTimeSlots(), dates: createEmptyDates() }],
   });
 
   const fetchInitialData = async () => {
@@ -127,7 +132,7 @@ export default function StationaryForm() {
       ...formData,
       medications: applySharedDatesToMedications([
         ...formData.medications,
-        { id: Date.now(), name: "", description: "", time: "", dates: createEmptyDates() }
+        { id: Date.now(), name: "", timeSlots: createEmptyTimeSlots(), dates: createEmptyDates() }
       ])
     });
   };
@@ -140,10 +145,7 @@ export default function StationaryForm() {
   };
 
   const formatMedicationPrintLabel = (medication: any) => {
-    return [medication?.name, medication?.description]
-      .map((value) => String(value || "").trim())
-      .filter(Boolean)
-      .join(", ");
+    return String(medication?.name || "").trim();
   };
 
   const removeMedication = (medId: number) => {
@@ -156,7 +158,15 @@ export default function StationaryForm() {
 
   const updateMedication = (medId: number, field: string, value: any) => {
     const nextMedications = formData.medications.map((med) =>
-      med.id === medId ? { ...med, [field]: field === "dates" ? normalizeDates(value) : value } : med
+      med.id === medId ? {
+        ...med,
+        [field]:
+          field === "dates"
+            ? normalizeDates(value)
+            : field === "timeSlots"
+              ? normalizeTimeSlots(value)
+              : value,
+      } : med
     );
 
     setFormData({
@@ -224,7 +234,7 @@ export default function StationaryForm() {
     const printableItems = formData.medications.map((medication, index) => ({
       index: index + 1,
       text: formatMedicationPrintLabel(medication),
-      time: String(medication?.time || "").trim(),
+      timeSlots: normalizeTimeSlots(medication?.timeSlots).map((value) => String(value || "").trim()),
       dates: index === 0
         ? sharedDates.map((value: string) => String(value || "").trim()).slice(0, 7)
         : createEmptyDates(),
@@ -350,34 +360,32 @@ export default function StationaryForm() {
                     <button onClick={() => removeMedication(med.id)} className="absolute top-4 right-4 text-slate-300 hover:text-red-500">
                       <Trash2 size={16} />
                     </button>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="md:col-span-2">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">მედიკამენტი / დანიშნულება</label>
-                        <input 
-                          type="text" 
-                          className="w-full h-14 px-4 bg-white border border-slate-200 rounded-xl outline-none text-base"
-                          value={med.name}
-                          onChange={(e) => updateMedication(med.id, "name", e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">დრო</label>
-                        <input 
-                          type="text" 
-                          className="w-full h-14 px-4 bg-white border border-slate-200 rounded-xl outline-none text-base"
-                          value={med.time}
-                          onChange={(e) => updateMedication(med.id, "time", e.target.value)}
-                        />
-                      </div>
-                    </div>
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">აღწერა / დოზირება</label>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">მედიკამენტი / დანიშნულება</label>
                       <input 
                         type="text" 
                         className="w-full h-14 px-4 bg-white border border-slate-200 rounded-xl outline-none text-base"
-                        value={med.description}
-                        onChange={(e) => updateMedication(med.id, "description", e.target.value)}
+                        value={med.name}
+                        onChange={(e) => updateMedication(med.id, "name", e.target.value)}
                       />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">დრო (4 გრაფა)</label>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-1">
+                        {normalizeTimeSlots(med.timeSlots).map((timeValue: string, timeIndex: number) => (
+                          <input
+                            key={timeIndex}
+                            type="text"
+                            className="w-full h-14 px-3 bg-white border border-slate-200 rounded-xl outline-none text-center text-sm"
+                            value={timeValue}
+                            onChange={(e) => {
+                              const nextTimeSlots = normalizeTimeSlots(med.timeSlots);
+                              nextTimeSlots[timeIndex] = e.target.value;
+                              updateMedication(med.id, "timeSlots", nextTimeSlots);
+                            }}
+                          />
+                        ))}
+                      </div>
                     </div>
                     {idx === 0 && (
                     <div>
@@ -482,7 +490,7 @@ export default function StationaryForm() {
                       <td className="px-[1.1mm] pt-[0.55mm] whitespace-nowrap overflow-hidden">
                         {medication ? formatMedicationPrintLabel(medication) : ""}
                       </td>
-                      <td className="px-[0.5mm] pt-[0.55mm] text-center">{medication?.time || ""}</td>
+                      <td className="px-[0.5mm] pt-[0.55mm] text-center">{medication ? normalizeTimeSlots(medication?.timeSlots)[0] : ""}</td>
                       {Array.from({ length: 7 }).map((_, dateIndex) => (
                         <td key={dateIndex} className="px-[0.2mm] pt-[0.55mm] text-center">{medication?.dates?.[dateIndex] || ""}</td>
                       ))}

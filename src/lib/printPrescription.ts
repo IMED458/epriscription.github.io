@@ -17,6 +17,7 @@ type PrintableItem = {
   index: number;
   text?: string;
   time?: string;
+  timeSlots?: string[];
   dates?: string[];
 };
 
@@ -59,10 +60,13 @@ export function printPrescription({
   const BLOCK_HEIGHT = ROW_HEIGHT * SUB_ROWS;
   const normalizedItems = (items.length > 0
     ? items
-    : [{ index: 1, text: "", time: "", dates: Array(DATE_COLS).fill("") }]).map((item, index) => ({
+    : [{ index: 1, text: "", time: "", timeSlots: Array(SUB_ROWS).fill(""), dates: Array(DATE_COLS).fill("") }]).map((item, index) => ({
       index: Number(item.index || index + 1),
       text: String(item.text || ""),
       time: String(item.time || ""),
+      timeSlots: Array.from({ length: SUB_ROWS }).map((_, timeIndex) =>
+        String(item.timeSlots?.[timeIndex] || (timeIndex === 0 ? item.time || "" : ""))
+      ),
       dates: Array.from({ length: DATE_COLS }).map((_, dateIndex) => String(item.dates?.[dateIndex] || "")),
     }));
   const sharedDates = Array.from({ length: DATE_COLS }).map((_, dateIndex) => {
@@ -78,7 +82,9 @@ export function printPrescription({
     for (const item of pageItems) {
       const blockNum = Number(item.index || 0) || 0;
       const text = escapeHtml(item.text || "");
-      const time = escapeHtml(item.time || "");
+      const timeSlots = Array.from({ length: SUB_ROWS }).map((_, timeIndex) =>
+        escapeHtml(item.timeSlots?.[timeIndex] || (timeIndex === 0 ? item.time || "" : ""))
+      );
 
       for (let subRow = 0; subRow < SUB_ROWS; subRow += 1) {
         const isFirst = subRow === 0;
@@ -132,7 +138,7 @@ export function printPrescription({
           align-items:center;
           justify-content:center;
           text-align:center;
-        ">${isFirst ? time : ""}</div></td>`;
+        ">${timeSlots[subRow] || ""}</div></td>`;
 
         for (let dateIndex = 0; dateIndex < DATE_COLS; dateIndex += 1) {
           html += `<td style="
