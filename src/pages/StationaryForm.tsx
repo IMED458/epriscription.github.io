@@ -181,7 +181,11 @@ export default function StationaryForm() {
 
   const handlePrint = async () => {
     if (!printRef.current) return;
-    const canvas = await html2canvas(printRef.current, { scale: 2 });
+    const canvas = await html2canvas(printRef.current, {
+      scale: 3,
+      backgroundColor: "#ffffff",
+      useCORS: true,
+    });
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF("p", "mm", "a4");
     const imgProps = pdf.getImageProperties(imgData);
@@ -378,7 +382,6 @@ export default function StationaryForm() {
         <div ref={printRef} className="relative w-[210mm] h-[297mm] overflow-hidden bg-white text-black" style={{ fontFamily: '"Times New Roman", "Sylfaen", serif' }}>
           <img src="/assets/stationary-template.png" alt="" className="absolute inset-0 h-full w-full object-fill" />
 
-          <div className="absolute left-[27mm] top-[23.6mm] h-[8.1mm] w-[145mm] bg-white" />
           <div className="absolute left-[30.2mm] top-[25.2mm] text-[9.4pt] font-semibold">
             {patient.firstName} {patient.lastName}, ის # {patient.historyNumber}, პ/ნ: {patient.personalId}
           </div>
