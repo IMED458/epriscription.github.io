@@ -111,6 +111,13 @@ export default function StationaryForm() {
     return `${match[3]}.${match[2]}.${match[1]}`;
   };
 
+  const formatMedicationPrintLabel = (medication: any) => {
+    return [medication?.name, medication?.description]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+      .join(", ");
+  };
+
   const removeMedication = (medId: number) => {
     if (formData.medications.length === 1) return;
     setFormData({
@@ -466,56 +473,54 @@ export default function StationaryForm() {
         <div ref={printRef} className="relative w-[210mm] h-[297mm] overflow-hidden bg-white text-black" style={{ fontFamily: '"Times New Roman", "Sylfaen", serif' }}>
           <img src="/assets/stationary-template.png" alt="" className="absolute inset-0 h-full w-full object-fill" />
 
-          <div className="absolute left-[30.2mm] top-[25.2mm] text-[9.4pt] font-semibold">
-            {patient.firstName} {patient.lastName}, ის # {patient.historyNumber}, პ/ნ: {patient.personalId}
+          <div className="absolute left-[11.7mm] top-[20.4mm] h-[10.6mm] w-[154.6mm] border-b-[0.45mm] border-black bg-white" />
+          <div className="absolute left-[13.2mm] top-[22.4mm] text-[8.8pt] font-semibold">
+            პაციენტი: {patient.firstName} {patient.lastName}, ის # {patient.historyNumber}, პ/ნ: {patient.personalId}
           </div>
 
-          <div className="absolute left-[56mm] top-[30.3mm] w-[138mm] text-[9.4pt] leading-tight">
+          <div className="absolute left-[40mm] top-[36.1mm] w-[156mm] text-[8.3pt] leading-tight">
             {formData.diagnosis}
           </div>
-          <div className="absolute left-[45.5mm] top-[41.7mm] w-[34mm] text-[9pt] text-center">
+          <div className="absolute left-[49.6mm] top-[43.8mm] h-[5.2mm] w-[25.8mm] border-b-[0.28mm] border-black bg-white text-[8.2pt] text-center">
             {formatPrintDate(formData.hospitalizationDate)}
           </div>
-          <div className="absolute left-[128.5mm] top-[41.7mm] w-[36mm] text-[9pt] text-center">
+          <div className="absolute left-[126.3mm] top-[43.8mm] h-[5.2mm] w-[31mm] border-b-[0.28mm] border-black bg-white text-[8.2pt] text-center">
             {formatPrintDate(formData.surgeryDate)}
           </div>
-          <div className="absolute left-[99mm] top-[52.1mm] w-[95mm] text-[9pt]">
+          <div className="absolute left-[91.6mm] top-[52.3mm] w-[101mm] text-[8.2pt]">
             {formData.allergy}
           </div>
-          <div className="absolute left-[11.5mm] top-[85.7mm] w-[136mm] text-[9pt]">
+          <div className="absolute left-[25.2mm] top-[72.7mm] w-[100mm] text-[8.4pt]">
             {formData.department}
           </div>
-          <div className="absolute left-[164.5mm] top-[85.7mm] w-[28mm] text-[9pt] text-center">
+          <div className="absolute left-[167.9mm] top-[72.7mm] w-[21mm] text-[8.4pt] text-center">
             {formData.room}
           </div>
 
-          <div className="absolute left-[11.3mm] top-[98.1mm] w-[184.9mm]">
-            <table className="w-full table-fixed border-collapse text-[7.2pt] leading-tight">
+          <div className="absolute left-[15.1mm] top-[103.1mm] h-[11.8mm] w-[4.8mm] bg-white" />
+
+          <div className="absolute left-[13.5mm] top-[91.5mm] w-[181.5mm]">
+            <table className="w-full table-fixed border-collapse text-[6.35pt] leading-none">
               <colgroup>
-                <col style={{ width: "7mm" }} />
-                <col style={{ width: "69mm" }} />
-                <col style={{ width: "18mm" }} />
+                <col style={{ width: "8.4mm" }} />
+                <col style={{ width: "78.4mm" }} />
+                <col style={{ width: "17.2mm" }} />
                 {Array.from({ length: 7 }).map((_, index) => (
-                  <col key={index} style={{ width: "12.9mm" }} />
+                  <col key={index} style={{ width: "11mm" }} />
                 ))}
               </colgroup>
               <tbody>
                 {Array.from({ length: 18 }).map((_, rowIndex) => {
                   const medication = formData.medications[rowIndex];
                   return (
-                    <tr key={rowIndex} className="h-[7.6mm] align-top">
-                      <td className="px-[1mm] pt-[1.2mm] text-center font-semibold">{medication ? rowIndex + 1 : ""}</td>
-                      <td className="px-[1.2mm] pt-[0.9mm]">
-                        {medication ? (
-                          <>
-                            <div className="font-semibold">{medication.name}</div>
-                            <div className="text-[6.5pt] italic">{medication.description}</div>
-                          </>
-                        ) : null}
+                    <tr key={rowIndex} className="h-[7.05mm] align-middle">
+                      <td className="pt-[0.8mm] text-center font-semibold">{medication ? rowIndex + 1 : ""}</td>
+                      <td className="px-[1.1mm] pt-[0.55mm] whitespace-nowrap overflow-hidden">
+                        {medication ? formatMedicationPrintLabel(medication) : ""}
                       </td>
-                      <td className="px-[0.5mm] pt-[1.2mm] text-center">{medication?.time || ""}</td>
+                      <td className="px-[0.5mm] pt-[0.55mm] text-center">{medication?.time || ""}</td>
                       {Array.from({ length: 7 }).map((_, dateIndex) => (
-                        <td key={dateIndex} className="px-[0.3mm] pt-[1.2mm] text-center">{medication?.dates?.[dateIndex] || ""}</td>
+                        <td key={dateIndex} className="px-[0.2mm] pt-[0.55mm] text-center">{medication?.dates?.[dateIndex] || ""}</td>
                       ))}
                     </tr>
                   );
