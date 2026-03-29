@@ -13,15 +13,14 @@ export default function StationaryForm() {
   const params = new URLSearchParams(location.search);
   const prescriptionId = params.get("prescriptionId");
 
-  const getCurrentDoctorName = () => {
-    if (typeof window === "undefined") return "";
+  const getCurrentAppUser = () => {
+    if (typeof window === "undefined") return null;
 
     try {
       const rawUser = window.localStorage.getItem("user");
-      const parsedUser = rawUser ? JSON.parse(rawUser) : null;
-      return String(parsedUser?.name || "").trim();
+      return rawUser ? JSON.parse(rawUser) : null;
     } catch (_) {
-      return "";
+      return null;
     }
   };
   
@@ -29,7 +28,9 @@ export default function StationaryForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [templates, setTemplates] = useState<any[]>([]);
+  const [staffUsers, setStaffUsers] = useState<any[]>([]);
   const normalizedPatientId = id && /^\d+$/.test(id) ? Number(id) : id || "";
+  const initialUser = getCurrentAppUser();
   
   const [formData, setFormData] = useState({
     diagnosis: "",
@@ -38,7 +39,11 @@ export default function StationaryForm() {
     allergy: "",
     department: "",
     room: "",
-    doctorName: getCurrentDoctorName(),
+    doctorId: String(initialUser?.role === "doctor" ? initialUser?.id || "" : ""),
+    doctorName: String(initialUser?.role === "doctor" ? initialUser?.name || "" : "").trim(),
+    doctorPhone: String(initialUser?.role === "doctor" ? initialUser?.phone || "" : "").trim(),
+    juniorDoctorName: String(initialUser?.role === "junior_doctor" ? initialUser?.name || "" : "").trim(),
+    juniorDoctorPhone: String(initialUser?.role === "junior_doctor" ? initialUser?.phone || "" : "").trim(),
     medications: [
       { id: Date.now(), name: "", timeSlots: Array(4).fill(""), dates: Array(7).fill("") }
     ]
@@ -73,46 +78,130 @@ export default function StationaryForm() {
     }));
   };
 
+  const getCurrentUserProfile = (availableStaff = staffUsers) => {
+    const storedUser = getCurrentAppUser();
+    if (!storedUser) return null;
+    return availableStaff.find((item: any) => String(item.id || "") === String(storedUser.id || "")) || storedUser;
+  };
+
+  const normalizeDoctorFields = (data: any, availableStaff = staffUsers) => {
+    const currentUser = getCurrentUserProfile(availableStaff);
+    const doctorUsers = availableStaff.filter((item: any) => item.role === "doctor");
+    const nextData = {
+      ...data,
+      doctorId: String(data?.doctorId || "").trim(),
+      doctorName: String(data?.doctorName || "").trim(),
+      doctorPhone: String(data?.doctorPhone || "").trim(),
+      juniorDoctorName: String(data?.juniorDoctorName || "").trim(),
+      juniorDoctorPhone: String(data?.juniorDoctorPhone || "").trim(),
+    };
+
+    if (!currentUser) {
+      return nextData;
+    }
+
+    if (currentUser.role === "doctor") {
+      return {
+        ...nextData,
+        doctorId: nextData.doctorId || String(currentUser.id || "").trim(),
+        doctorName: nextData.doctorName || String(currentUser.name || "").trim(),
+        doctorPhone: nextData.doctorPhone || String(currentUser.phone || "").trim(),
+      };
+    }
+
+    if (currentUser.role === "junior_doctor") {
+      const shouldDefaultJuniorDoctor = !nextData.juniorDoctorName && !nextData.doctorName;
+      const selectedDoctor =
+        doctorUsers.find((item: any) => String(item.id || "") === nextData.doctorId) ||
+        doctorUsers.find((item: any) => String(item.name || "").trim() === nextData.doctorName) ||
+        doctorUsers[0];
+
+      return {
+        ...nextData,
+        doctorId: String(selectedDoctor?.id || "").trim(),
+        doctorName: String(selectedDoctor?.name || "").trim(),
+        doctorPhone: String(selectedDoctor?.phone || "").trim(),
+        juniorDoctorName: nextData.juniorDoctorName || (shouldDefaultJuniorDoctor ? String(currentUser.name || "").trim() : ""),
+        juniorDoctorPhone: nextData.juniorDoctorPhone || (shouldDefaultJuniorDoctor ? String(currentUser.phone || "").trim() : ""),
+      };
+    }
+
+    if (!nextData.doctorName && doctorUsers[0]) {
+      return {
+        ...nextData,
+        doctorId: String(doctorUsers[0].id || "").trim(),
+        doctorName: String(doctorUsers[0].name || "").trim(),
+        doctorPhone: String(doctorUsers[0].phone || "").trim(),
+      };
+    }
+
+    return nextData;
+  };
+
   useEffect(() => {
     fetchInitialData();
   }, [id, prescriptionId]);
 
-  const normalizeFormData = (data: any) => ({
-    diagnosis: data?.diagnosis || "",
-    hospitalizationDate: data?.hospitalizationDate || new Date().toISOString().split("T")[0],
-    surgeryDate: data?.surgeryDate || "",
-    allergy: data?.allergy || "",
-    department: data?.department || "",
-    room: data?.room || "",
-    doctorName: String(data?.doctorName || getCurrentDoctorName()).trim(),
-    medications: Array.isArray(data?.medications) && data.medications.length > 0
-      ? applySharedDatesToMedications(data.medications.map((med: any) => ({
-          id: med?.id || Date.now() + Math.random(),
-          name: med?.name || "",
-          timeSlots: normalizeTimeSlots(med?.timeSlots, med?.time),
-          dates: normalizeDates(med?.dates),
-        })))
-      : [{ id: Date.now(), name: "", timeSlots: createEmptyTimeSlots(), dates: createEmptyDates() }],
-  });
+  useEffect(() => {
+    if (!staffUsers.length) return;
+    setFormData((prev) => {
+      const next = normalizeDoctorFields(prev, staffUsers);
+      if (
+        next.doctorId === prev.doctorId &&
+        next.doctorName === prev.doctorName &&
+        next.doctorPhone === prev.doctorPhone &&
+        next.juniorDoctorName === prev.juniorDoctorName &&
+        next.juniorDoctorPhone === prev.juniorDoctorPhone
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, [staffUsers]);
+
+  const normalizeFormData = (data: any, availableStaff = staffUsers) =>
+    normalizeDoctorFields({
+      diagnosis: data?.diagnosis || "",
+      hospitalizationDate: data?.hospitalizationDate || new Date().toISOString().split("T")[0],
+      surgeryDate: data?.surgeryDate || "",
+      allergy: data?.allergy || "",
+      department: data?.department || "",
+      room: data?.room || "",
+      doctorId: data?.doctorId || "",
+      doctorName: data?.doctorName || "",
+      doctorPhone: data?.doctorPhone || "",
+      juniorDoctorName: data?.juniorDoctorName || "",
+      juniorDoctorPhone: data?.juniorDoctorPhone || "",
+      medications: Array.isArray(data?.medications) && data.medications.length > 0
+        ? applySharedDatesToMedications(data.medications.map((med: any) => ({
+            id: med?.id || Date.now() + Math.random(),
+            name: med?.name || "",
+            timeSlots: normalizeTimeSlots(med?.timeSlots, med?.time),
+            dates: normalizeDates(med?.dates),
+          })))
+        : [{ id: Date.now(), name: "", timeSlots: createEmptyTimeSlots(), dates: createEmptyDates() }],
+    }, availableStaff);
 
   const fetchInitialData = async () => {
     try {
-      const [patientRes, templatesRes] = await Promise.all([
+      const [patientRes, templatesRes, staffRes] = await Promise.all([
         api.get(`/patients/${id}`),
         api.get("/templates"),
+        api.get("/staff-users"),
       ]);
       setPatient(patientRes.data);
       setTemplates(templatesRes.data.filter((t: any) => t.type === "stationary"));
+      setStaffUsers(staffRes.data);
 
       if (prescriptionId) {
         const prescriptionRes = await api.get(`/prescriptions/${prescriptionId}`);
         const parsed = JSON.parse(prescriptionRes.data.data || "{}");
-        setFormData(normalizeFormData(parsed));
+        setFormData(normalizeFormData(parsed, staffRes.data));
       } else {
-        setFormData((prev) => ({
+        setFormData((prev) => normalizeFormData({
           ...prev,
           room: String(patientRes.data?.room || prev.room || ""),
-        }));
+        }, staffRes.data));
       }
     } catch (err) {
       toast.error("ფორმის ჩატვირთვა ვერ მოხერხდა");
@@ -213,11 +302,7 @@ export default function StationaryForm() {
 
   const handleSave = async () => {
     setSaving(true);
-    const currentDoctorName = getCurrentDoctorName();
-    const payloadData = {
-      ...formData,
-      doctorName: currentDoctorName || formData.doctorName || "",
-    };
+    const payloadData = normalizeDoctorFields(formData);
 
     try {
       if (prescriptionId) {
@@ -238,7 +323,11 @@ export default function StationaryForm() {
       }
       setFormData((prev) => ({
         ...prev,
+        doctorId: payloadData.doctorId,
         doctorName: payloadData.doctorName,
+        doctorPhone: payloadData.doctorPhone,
+        juniorDoctorName: payloadData.juniorDoctorName,
+        juniorDoctorPhone: payloadData.juniorDoctorPhone,
       }));
       toast.success("დანიშნულება წარმატებით შეინახა");
       navigate(`/patients/${id}`);
@@ -253,10 +342,11 @@ export default function StationaryForm() {
     const name = window.prompt("შეიყვანეთ შაბლონის სახელი:");
     if (!name) return;
     try {
+      const payloadData = normalizeDoctorFields(formData);
       await api.post("/templates", {
         name,
         type: "stationary",
-        data: formData
+        data: payloadData
       });
       toast.success("შაბლონი შეინახა");
       fetchTemplates();
@@ -276,9 +366,9 @@ export default function StationaryForm() {
   const handlePrint = () => {
     if (!patient) return;
 
-    const sharedDates = getSharedMedicationDates(formData.medications);
-    const currentDoctorName = getCurrentDoctorName() || formData.doctorName || "";
-    const printableItems = formData.medications.map((medication, index) => ({
+    const normalizedData = normalizeDoctorFields(formData);
+    const sharedDates = getSharedMedicationDates(normalizedData.medications);
+    const printableItems = normalizedData.medications.map((medication: any, index: number) => ({
       index: index + 1,
       text: formatMedicationPrintLabel(medication),
       timeSlots: normalizeTimeSlots(medication?.timeSlots).map((value) => String(value || "").trim()),
@@ -294,19 +384,24 @@ export default function StationaryForm() {
         personalId: patient.personalId || "",
       },
       prescription: {
-        diagnosis: formData.diagnosis,
-        hospitalizationDate: formatPrintDate(formData.hospitalizationDate),
-        surgeryDate: formatPrintDate(formData.surgeryDate),
-        allergy: formData.allergy,
-        department: formData.department,
-        ward: formData.room,
+        diagnosis: normalizedData.diagnosis,
+        hospitalizationDate: formatPrintDate(normalizedData.hospitalizationDate),
+        surgeryDate: formatPrintDate(normalizedData.surgeryDate),
+        allergy: normalizedData.allergy,
+        department: normalizedData.department,
+        ward: normalizedData.room,
       },
-      doctorName: currentDoctorName,
+      doctorName: normalizedData.doctorName || String(getCurrentUserProfile()?.name || "").trim(),
       items: printableItems,
     });
   };
 
   if (loading) return <div className="p-10 text-center">იტვირთება...</div>;
+
+  const currentUserProfile = getCurrentUserProfile();
+  const doctorUsers = staffUsers.filter((item: any) => item.role === "doctor");
+  const needsDoctorPicker = currentUserProfile?.role !== "doctor" && doctorUsers.length > 0;
+  const isJuniorDoctor = currentUserProfile?.role === "junior_doctor";
 
   return (
     <div className="space-y-6 pb-20">
@@ -395,6 +490,49 @@ export default function StationaryForm() {
                   value={formData.room}
                   onChange={(e) => setFormData({...formData, room: e.target.value})}
                 />
+              </div>
+              {isJuniorDoctor && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">უმცროსი ექიმი</label>
+                  <input
+                    type="text"
+                    readOnly
+                    className="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 outline-none"
+                    value={formData.juniorDoctorName || String(currentUserProfile?.name || "").trim()}
+                  />
+                </div>
+              )}
+              <div className={needsDoctorPicker && isJuniorDoctor ? "md:col-span-2" : ""}>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">მკურნალი ექიმი</label>
+                {needsDoctorPicker ? (
+                  <select
+                    className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                    value={formData.doctorId}
+                    onChange={(e) => {
+                      const selectedDoctor = doctorUsers.find((item: any) => String(item.id || "") === e.target.value);
+                      setFormData((prev) => normalizeDoctorFields({
+                        ...prev,
+                        doctorId: String(selectedDoctor?.id || ""),
+                        doctorName: String(selectedDoctor?.name || ""),
+                        doctorPhone: String(selectedDoctor?.phone || ""),
+                      }));
+                    }}
+                  >
+                    <option value="">აირჩიეთ ექიმი</option>
+                    {doctorUsers.map((doctor: any) => (
+                      <option key={doctor.id} value={doctor.id}>
+                        {doctor.name}{doctor.phone ? ` - ${doctor.phone}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    readOnly
+                    className="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 outline-none"
+                    value={formData.doctorName || String(currentUserProfile?.name || "").trim()}
+                  />
+                )}
               </div>
             </div>
 

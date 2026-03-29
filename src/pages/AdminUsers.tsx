@@ -18,6 +18,7 @@ const defaultForm = {
   name: "",
   username: "",
   password: "",
+  phone: "",
   role: "doctor",
 };
 
@@ -36,7 +37,7 @@ export default function AdminUsers() {
   const fetchUsers = async () => {
     try {
       const res = await api.get("/users");
-      setUsers(res.data);
+      setUsers(res.data.map((user: any) => ({ ...user, nextPassword: "" })));
     } catch (_) {
       toast.error("მომხმარებლების წამოღება ვერ მოხერხდა");
     } finally {
@@ -59,20 +60,31 @@ export default function AdminUsers() {
     }
   };
 
-  const handleRoleChange = (userId: string, role: string) => {
+  const handleFieldChange = (userId: string, field: string, value: string) => {
     setUsers((prev) =>
-      prev.map((user) => (user.id === userId ? { ...user, role } : user))
+      prev.map((user) => (user.id === userId ? { ...user, [field]: value } : user))
     );
   };
 
-  const handleSaveRole = async (user: any) => {
+  const handleSaveUser = async (user: any) => {
     setSavingId(String(user.id || ""));
     try {
-      await api.put(`/users/${user.id}`, { role: user.role });
-      toast.success("როლი განახლდა");
+      const payload: Record<string, any> = {
+        name: String(user.name || "").trim(),
+        username: String(user.username || "").trim(),
+        phone: String(user.phone || "").trim(),
+        role: String(user.role || "").trim(),
+      };
+
+      if (String(user.nextPassword || "").trim()) {
+        payload.password = String(user.nextPassword || "").trim();
+      }
+
+      await api.put(`/users/${user.id}`, payload);
+      toast.success(payload.password ? "მომხმარებელი და პაროლი განახლდა" : "მომხმარებელი განახლდა");
       fetchUsers();
     } catch (_) {
-      toast.error("როლის განახლება ვერ მოხერხდა");
+      toast.error("მომხმარებლის განახლება ვერ მოხერხდა");
     } finally {
       setSavingId("");
     }
@@ -99,7 +111,7 @@ export default function AdminUsers() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-slate-900">მომხმარებლების მართვა</h1>
-        <p className="text-slate-500">შექმენი ახალი იუზერები, შეუცვალე როლი ან წაშალე</p>
+        <p className="text-slate-500">შექმენი, შეცვალე, წაშალე და საჭიროების შემთხვევაში პაროლიც აღუდგინე</p>
       </div>
 
       <form onSubmit={handleCreateUser} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
@@ -110,7 +122,7 @@ export default function AdminUsers() {
           <h2 className="text-xl font-bold text-slate-900">ახალი მომხმარებელი</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
           <input
             required
             type="text"
@@ -134,6 +146,14 @@ export default function AdminUsers() {
             className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             value={createForm.password}
             onChange={(event) => setCreateForm({ ...createForm, password: event.target.value })}
+          />
+          <input
+            required
+            type="text"
+            placeholder="ტელეფონი"
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            value={createForm.phone}
+            onChange={(event) => setCreateForm({ ...createForm, phone: event.target.value })}
           />
           <select
             className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -169,27 +189,63 @@ export default function AdminUsers() {
               <tr className="bg-slate-50/70">
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">სახელი</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">მომხმარებელი</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">ტელეფონი</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">როლი</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">ახალი პაროლი</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">მოქმედება</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-10 text-center text-slate-400">იტვირთება...</td>
+                  <td colSpan={6} className="px-6 py-10 text-center text-slate-400">იტვირთება...</td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-10 text-center text-slate-400">მომხმარებლები არ მოიძებნა</td>
+                  <td colSpan={6} className="px-6 py-10 text-center text-slate-400">მომხმარებლები არ მოიძებნა</td>
                 </tr>
               ) : (
                 users.map((user) => (
                   <tr key={user.id} className="hover:bg-slate-50/70 transition-colors">
                     <td className="px-6 py-4">
-                      <div className="font-semibold text-slate-900">{user.name}</div>
-                      {user.isStatic && <div className="text-xs text-slate-500">სისტემური ანგარიში</div>}
+                      {user.isStatic ? (
+                        <>
+                          <div className="font-semibold text-slate-900">{user.name}</div>
+                          <div className="text-xs text-slate-500">სისტემური ანგარიში</div>
+                        </>
+                      ) : (
+                        <input
+                          type="text"
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                          value={user.name}
+                          onChange={(event) => handleFieldChange(user.id, "name", event.target.value)}
+                        />
+                      )}
                     </td>
-                    <td className="px-6 py-4 font-mono text-slate-700">{user.username}</td>
+                    <td className="px-6 py-4">
+                      {user.isStatic ? (
+                        <span className="font-mono text-slate-700">{user.username}</span>
+                      ) : (
+                        <input
+                          type="text"
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 font-mono outline-none focus:ring-2 focus:ring-blue-500"
+                          value={user.username}
+                          onChange={(event) => handleFieldChange(user.id, "username", event.target.value)}
+                        />
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {user.isStatic ? (
+                        <span className="text-slate-500">{user.phone || "-"}</span>
+                      ) : (
+                        <input
+                          type="text"
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                          value={user.phone || ""}
+                          onChange={(event) => handleFieldChange(user.id, "phone", event.target.value)}
+                        />
+                      )}
+                    </td>
                     <td className="px-6 py-4">
                       {user.isStatic ? (
                         <span className="inline-flex px-3 py-2 rounded-xl bg-slate-100 text-slate-700 font-medium">
@@ -199,7 +255,7 @@ export default function AdminUsers() {
                         <select
                           className="px-3 py-2 rounded-xl border border-slate-200 bg-white outline-none focus:ring-2 focus:ring-blue-500"
                           value={user.role}
-                          onChange={(event) => handleRoleChange(user.id, event.target.value)}
+                          onChange={(event) => handleFieldChange(user.id, "role", event.target.value)}
                         >
                           {ROLE_OPTIONS.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
@@ -208,10 +264,23 @@ export default function AdminUsers() {
                       )}
                     </td>
                     <td className="px-6 py-4">
+                      {user.isStatic ? (
+                        <span className="text-slate-400">რედაქტირება გამორთულია</span>
+                      ) : (
+                        <input
+                          type="text"
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="ახალი პაროლი"
+                          value={user.nextPassword || ""}
+                          onChange={(event) => handleFieldChange(user.id, "nextPassword", event.target.value)}
+                        />
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         {!user.isStatic && (
                           <button
-                            onClick={() => handleSaveRole(user)}
+                            onClick={() => handleSaveUser(user)}
                             disabled={savingId === user.id}
                             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                           >

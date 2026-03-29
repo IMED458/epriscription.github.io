@@ -32,7 +32,21 @@ const DEFAULT_APP_USER = {
   username: "admin",
   role: "admin",
   name: "ადმინისტრატორი",
+  phone: "",
 };
+
+const STATIC_USERS = [
+  {
+    id: "admin",
+    username: "admin",
+    role: "admin",
+    name: "ადმინისტრატორი",
+    phone: "",
+    isStatic: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+];
 
 function parseCsvRows(csv) {
   const rows = [];
@@ -311,6 +325,27 @@ function normalizeRecord(value) {
   return value ? JSON.parse(JSON.stringify(value)) : value;
 }
 
+function sanitizeUserRecord(user) {
+  return {
+    id: String(user.id || ""),
+    username: String(user.username || ""),
+    role: String(user.role || ""),
+    name: String(user.name || ""),
+    phone: String(user.phone || ""),
+    createdAt: user.createdAt || "",
+    updatedAt: user.updatedAt || "",
+    isStatic: Boolean(user.isStatic),
+  };
+}
+
+function sortUsers(users) {
+  return [...users].sort((left, right) => {
+    if (left.role === "admin" && right.role !== "admin") return -1;
+    if (left.role !== "admin" && right.role === "admin") return 1;
+    return String(left.name || left.username || "").localeCompare(String(right.name || right.username || ""), "ka");
+  });
+}
+
 async function ensureAnonymousSession() {
   if (auth.currentUser) return auth.currentUser;
   const credential = await signInAnonymously(auth);
@@ -349,6 +384,15 @@ export async function fetchPatient(patientId) {
     throw new Error("Patient not found");
   }
   return normalizeRecord(snapshot.data());
+}
+
+export async function fetchStaffUsers() {
+  await ensureDataSession();
+  const snapshot = await getDocs(collection(db, "users"));
+  return sortUsers([
+    ...STATIC_USERS.map(sanitizeUserRecord),
+    ...snapshot.docs.map((item) => sanitizeUserRecord(normalizeRecord(item.data()))),
+  ]);
 }
 
 export async function fetchRegistryPatient(historyNumber) {
@@ -439,6 +483,9 @@ export async function savePrescription({
     patientHistoryNumber: String(patientHistoryNumber || "").trim(),
     patientPersonalId: String(patientPersonalId || "").trim(),
     createdBy: user.id,
+    createdByName: String(user.name || "").trim(),
+    createdByRole: String(user.role || "").trim(),
+    createdByPhone: String(user.phone || "").trim(),
     createdAt,
     updatedAt: createdAt,
   };
@@ -458,7 +505,7 @@ export async function fetchTemplates(type) {
   const snapshot = await getDocs(collection(db, "templates"));
   return snapshot.docs
     .map((item) => normalizeRecord(item.data()))
-    .filter((item) => item.type === type && (item.isGlobal || item.createdBy === user.id))
+    .filter((item) => item.type === type && String(item.createdBy || "") === String(user.id || ""))
     .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
 }
 
@@ -471,6 +518,7 @@ export async function saveTemplate({ name, type, data, isGlobal = false }) {
     type: String(type || "").trim(),
     data: JSON.stringify(data ?? {}),
     createdBy: user.id,
+    createdByName: String(user.name || "").trim(),
     isGlobal: Boolean(isGlobal),
     createdAt: nowIso(),
   };
@@ -480,8 +528,17 @@ export async function saveTemplate({ name, type, data, isGlobal = false }) {
 }
 
 export async function deleteTemplate(templateId) {
-  await ensureDataSession();
-  await deleteDoc(doc(db, "templates", String(templateId)));
+  const user = await ensureDataSession();
+  const templateRef = doc(db, "templates", String(templateId));
+  const templateSnap = await getDoc(templateRef);
+  if (!templateSnap.exists()) {
+    throw new Error("Template not found");
+  }
+  const template = normalizeRecord(templateSnap.data());
+  if (String(template.createdBy || "") !== String(user.id || "") && user.role !== "admin") {
+    throw new Error("FORBIDDEN");
+  }
+  await deleteDoc(templateRef);
   return { ok: true };
 }
 

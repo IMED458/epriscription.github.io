@@ -189,8 +189,26 @@
             <input type="date" id="date" class="input-field w-full">
           </div>
           <div class="input-group">
-            <label>ექიმი</label>
-            <input type="text" id="doctor-name" class="input-field w-full" placeholder="ნინო კიკვაძე">
+            <label id="doctor-name-label">ექიმი</label>
+            <input type="text" id="doctor-name" class="input-field w-full" placeholder="ნინო კიკვაძე" readonly>
+          </div>
+          <div class="input-group" id="doctor-phone-group">
+            <label>ტელეფონი</label>
+            <input type="text" id="doctor-phone" class="input-field w-full" placeholder="555123456" readonly>
+          </div>
+          <div class="input-group hidden" id="junior-doctor-group">
+            <label>უმცროსი ექიმი</label>
+            <input type="text" id="junior-doctor-name" class="input-field w-full" placeholder="უმცროსი ექიმი" readonly>
+          </div>
+          <div class="input-group hidden" id="junior-doctor-phone-group">
+            <label>უმცროსი ექიმის ტელეფონი</label>
+            <input type="text" id="junior-doctor-phone" class="input-field w-full" placeholder="555123456" readonly>
+          </div>
+          <div class="input-group hidden md:col-span-2" id="supervising-doctor-group">
+            <label>მკურნალი ექიმი</label>
+            <select id="supervising-doctor-select" class="input-field w-full">
+              <option value="">აირჩიეთ ექიმი</option>
+            </select>
           </div>
         </div>
 
@@ -260,6 +278,7 @@
       saveTemplate,
       deleteTemplate,
       savePrescription,
+      fetchStaffUsers,
       replaceQueryParam,
       goToPatientProfile,
       normalizeDateToInput,
@@ -268,6 +287,7 @@
 
     let quill;
     let templates = [];
+    let staffUsers = [];
     let historyLookupTimer = null;
     let historyLookupRequestSeq = 0;
     let lastAutoFilledPatientName = "";
@@ -277,13 +297,104 @@
     const patientId = query.get("patientId") || "";
     const normalizedPatientId = /^\d+$/.test(patientId) ? Number(patientId) : patientId;
 
-    function getCurrentUserName() {
+    function getStoredUser() {
       try {
-        const user = JSON.parse(window.localStorage.getItem("user") || "null");
-        return user?.name || "";
+        return JSON.parse(window.localStorage.getItem("user") || "null");
       } catch (_) {
-        return "";
+        return null;
       }
+    }
+
+    function getCurrentUserProfile() {
+      const storedUser = getStoredUser();
+      if (!storedUser) return null;
+      return staffUsers.find((user) => String(user.id || "") === String(storedUser.id || "")) || storedUser;
+    }
+
+    function getCurrentUserName() {
+      return String(getCurrentUserProfile()?.name || "").trim();
+    }
+
+    function getCurrentUserPhone() {
+      return String(getCurrentUserProfile()?.phone || "").trim();
+    }
+
+    function toggleFieldGroup(id, visible) {
+      const element = document.getElementById(id);
+      if (!element) return;
+      element.classList.toggle("hidden", !visible);
+    }
+
+    function fillDoctorSelect(selectedId = "", selectedName = "") {
+      const select = document.getElementById("supervising-doctor-select");
+      if (!select) return null;
+
+      const doctorUsers = staffUsers.filter((user) => user.role === "doctor");
+      select.innerHTML = `<option value="">აირჩიეთ ექიმი</option>${doctorUsers
+        .map((user) => `<option value="${escapeHtml(String(user.id || ""))}">${escapeHtml(user.name || "")}${user.phone ? ` - ${escapeHtml(user.phone)}` : ""}</option>`)
+        .join("")}`;
+
+      let nextSelectedId = String(selectedId || "").trim();
+      if (!nextSelectedId && selectedName) {
+        nextSelectedId = String(
+          doctorUsers.find((user) => String(user.name || "").trim() === String(selectedName || "").trim())?.id || ""
+        );
+      }
+      if (!nextSelectedId && doctorUsers[0]) {
+        nextSelectedId = String(doctorUsers[0].id || "");
+      }
+
+      select.value = nextSelectedId;
+      return doctorUsers.find((user) => String(user.id || "") === nextSelectedId) || null;
+    }
+
+    function syncDoctorFields(preferredData = {}) {
+      const currentUser = getCurrentUserProfile();
+      const role = String(currentUser?.role || "");
+      const doctorNameLabel = document.getElementById("doctor-name-label");
+      const doctorNameInput = document.getElementById("doctor-name");
+      const doctorPhoneInput = document.getElementById("doctor-phone");
+      const juniorDoctorNameInput = document.getElementById("junior-doctor-name");
+      const juniorDoctorPhoneInput = document.getElementById("junior-doctor-phone");
+
+      if (!doctorNameInput || !doctorPhoneInput || !doctorNameLabel) return;
+
+      const preferredDoctorName = String(preferredData.doctorName || doctorNameInput.value || "").trim();
+      const preferredDoctorPhone = String(preferredData.doctorPhone || doctorPhoneInput.value || "").trim();
+      const preferredJuniorDoctorName = String(preferredData.juniorDoctorName || juniorDoctorNameInput?.value || "").trim();
+      const preferredJuniorDoctorPhone = String(preferredData.juniorDoctorPhone || juniorDoctorPhoneInput?.value || "").trim();
+      const selectedDoctor = fillDoctorSelect(preferredData.doctorId, preferredDoctorName);
+
+      if (role === "junior_doctor") {
+        const shouldDefaultJuniorDoctor = !preferredJuniorDoctorName && !preferredDoctorName;
+        doctorNameLabel.textContent = "მკურნალი ექიმი";
+        toggleFieldGroup("supervising-doctor-group", true);
+        toggleFieldGroup("doctor-phone-group", true);
+        toggleFieldGroup("junior-doctor-group", true);
+        toggleFieldGroup("junior-doctor-phone-group", true);
+        if (juniorDoctorNameInput) juniorDoctorNameInput.value = preferredJuniorDoctorName || (shouldDefaultJuniorDoctor ? getCurrentUserName() : "");
+        if (juniorDoctorPhoneInput) juniorDoctorPhoneInput.value = preferredJuniorDoctorPhone || (shouldDefaultJuniorDoctor ? getCurrentUserPhone() : "");
+        doctorNameInput.value = String(selectedDoctor?.name || preferredDoctorName || "").trim();
+        doctorPhoneInput.value = String(selectedDoctor?.phone || preferredDoctorPhone || "").trim();
+        return;
+      }
+
+      toggleFieldGroup("supervising-doctor-group", false);
+      toggleFieldGroup("junior-doctor-group", false);
+      toggleFieldGroup("junior-doctor-phone-group", false);
+      toggleFieldGroup("doctor-phone-group", true);
+
+      if (role === "doctor") {
+        doctorNameLabel.textContent = "ექიმი";
+        doctorNameInput.value = preferredDoctorName || getCurrentUserName();
+        doctorPhoneInput.value = preferredDoctorPhone || getCurrentUserPhone();
+        return;
+      }
+
+      doctorNameLabel.textContent = "მკურნალი ექიმი";
+      toggleFieldGroup("supervising-doctor-group", staffUsers.some((user) => user.role === "doctor"));
+      doctorNameInput.value = String(selectedDoctor?.name || preferredDoctorName || "").trim();
+      doctorPhoneInput.value = String(selectedDoctor?.phone || preferredDoctorPhone || "").trim();
     }
 
     function formatGeorgianDate(dateString) {
@@ -319,6 +430,11 @@
         historyNumber: document.getElementById("history-number").value.trim(),
         date: document.getElementById("date").value,
         doctorName: document.getElementById("doctor-name").value.trim(),
+        doctorPhone: document.getElementById("doctor-phone").value.trim(),
+        doctorId: document.getElementById("supervising-doctor-select").value || String(getCurrentUserProfile()?.id || ""),
+        juniorDoctorName: document.getElementById("junior-doctor-name").value.trim(),
+        juniorDoctorPhone: document.getElementById("junior-doctor-phone").value.trim(),
+        currentUserRole: String(getCurrentUserProfile()?.role || ""),
         contentHtml: quill.root.innerHTML || "<p><br></p>",
         requirePatientSignature: document.getElementById("require-patient-signature").checked
       };
@@ -328,7 +444,12 @@
       document.getElementById("patient-name").value = data.patientName || "";
       document.getElementById("history-number").value = data.historyNumber || "";
       document.getElementById("date").value = normalizeDateToInput(data.date) || new Date().toISOString().split("T")[0];
-      document.getElementById("doctor-name").value = data.doctorName || getCurrentUserName();
+      document.getElementById("doctor-name").value = data.doctorName || "";
+      document.getElementById("doctor-phone").value = data.doctorPhone || "";
+      document.getElementById("junior-doctor-name").value = data.juniorDoctorName || "";
+      document.getElementById("junior-doctor-phone").value = data.juniorDoctorPhone || "";
+      document.getElementById("supervising-doctor-select").value = data.doctorId || "";
+      syncDoctorFields(data);
       quill.root.innerHTML = data.contentHtml || "<p><br></p>";
       document.getElementById("require-patient-signature").checked = Boolean(data.requirePatientSignature);
     }
@@ -339,9 +460,7 @@
         const patient = await fetchPatient(patientId);
         document.getElementById("patient-name").value = `${patient.firstName} ${patient.lastName}`.trim();
         document.getElementById("history-number").value = patient.historyNumber || "";
-        if (!document.getElementById("doctor-name").value.trim()) {
-          document.getElementById("doctor-name").value = getCurrentUserName();
-        }
+        syncDoctorFields(getFormPayload());
       } catch (error) {
         showToast("პაციენტის ჩატვირთვა ვერ მოხერხდა", "error");
       }
@@ -365,6 +484,16 @@
         renderTemplatesInModal();
       } catch (error) {
         showToast("შაბლონების ჩატვირთვა ვერ მოხერხდა", "error");
+      }
+    }
+
+    async function loadStaffUsers() {
+      try {
+        staffUsers = await fetchStaffUsers();
+      } catch (error) {
+        staffUsers = [];
+      } finally {
+        syncDoctorFields();
       }
     }
 
@@ -534,7 +663,11 @@
       document.getElementById("patient-name").value = "";
       document.getElementById("history-number").value = "";
       document.getElementById("date").value = new Date().toISOString().split("T")[0];
-      document.getElementById("doctor-name").value = getCurrentUserName();
+      document.getElementById("doctor-name").value = "";
+      document.getElementById("doctor-phone").value = "";
+      document.getElementById("junior-doctor-name").value = "";
+      document.getElementById("junior-doctor-phone").value = "";
+      syncDoctorFields();
       quill.setContents([]);
       document.getElementById("require-patient-signature").checked = false;
       setHistoryLookupStatus("", "");
@@ -542,6 +675,12 @@
 
     function handlePrint() {
       const data = getFormPayload();
+      const doctorLine = data.doctorName
+        ? `${escapeHtml(data.doctorName)}${data.doctorPhone ? ` - ${escapeHtml(data.doctorPhone)}` : ""}`
+        : "-";
+      const juniorDoctorHtml = data.juniorDoctorName
+        ? `<p style="margin-top: 0.4rem;"><strong>უმცროსი ექიმი:</strong> ${escapeHtml(data.juniorDoctorName)}${data.juniorDoctorPhone ? ` - ${escapeHtml(data.juniorDoctorPhone)}` : ""}</p>`
+        : "";
       const printWin = window.open("", "_blank");
       const logoUrl = new URL("tm_center_logo.png", window.location.href).toString();
       const patientSigHtml = data.requirePatientSignature ? `
@@ -583,7 +722,8 @@
           <div class="prescription">${data.contentHtml || "<p>-</p>"}</div>
           <div class="signatures">
             <div class="doctor-sign">
-              <p style="margin:0;"><strong>ექიმი:</strong> ${data.doctorName || "-"}</p>
+              <p style="margin:0;"><strong>ექიმი:</strong> ${doctorLine}</p>
+              ${juniorDoctorHtml}
               <p class="sign-line">ხელმოწერა: _________________</p>
             </div>
             <div class="patient-sign">${patientSigHtml}</div>
@@ -603,7 +743,7 @@
       });
 
       document.getElementById("date").value = new Date().toISOString().split("T")[0];
-      document.getElementById("doctor-name").value = getCurrentUserName();
+      syncDoctorFields();
 
       document.getElementById("print-btn").addEventListener("click", handlePrint);
       document.getElementById("clear-btn").addEventListener("click", handleClear);
@@ -619,7 +759,9 @@
       document.getElementById("back-btn").addEventListener("click", () => goToPatientProfile(patientId));
       document.getElementById("history-number").addEventListener("input", () => scheduleHistoryLookup(false));
       document.getElementById("history-number").addEventListener("blur", () => scheduleHistoryLookup(true));
+      document.getElementById("supervising-doctor-select").addEventListener("change", () => syncDoctorFields(getFormPayload()));
 
+      await loadStaffUsers();
       await loadTemplates();
       await hydratePatient();
       await hydratePrescription();

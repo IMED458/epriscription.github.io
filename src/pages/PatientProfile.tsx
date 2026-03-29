@@ -281,6 +281,9 @@ export default function PatientProfile() {
                           <p className="text-xs text-slate-500">
                             შექმნილია: {new Date(pres.createdAt).toLocaleString('ka-GE')}
                           </p>
+                          <p className="text-xs text-slate-500">
+                            ავტორი: {pres.createdByName || "უცნობი მომხმარებელი"}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">

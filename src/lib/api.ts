@@ -18,6 +18,7 @@ const STATIC_USERS = [
     password: "admin123",
     role: "admin",
     name: "ადმინისტრატორი",
+    phone: "",
   },
 ];
 const MANAGED_USER_ROLES = new Set(["doctor", "nurse", "junior_doctor"]);
@@ -371,6 +372,7 @@ function sanitizeUserRecord(user: Record<string, any>) {
     username: String(user.username || ""),
     role: String(user.role || ""),
     name: String(user.name || ""),
+    phone: String(user.phone || ""),
     createdAt: user.createdAt || "",
     updatedAt: user.updatedAt || "",
     isStatic: Boolean(user.isStatic),
@@ -392,6 +394,16 @@ function sortUsers<T extends Record<string, any>>(users: T[]) {
     if (left.role !== "admin" && right.role === "admin") return 1;
     return String(left.name || left.username || "").localeCompare(String(right.name || right.username || ""), "ka");
   });
+}
+
+function resolveCreatorMetadata<T extends Record<string, any>>(item: T, users: Record<string, any>[]) {
+  const creator = users.find((user) => String(user.id || "") === String(item.createdBy || ""));
+  return {
+    ...item,
+    createdByName: String(item.createdByName || creator?.name || ""),
+    createdByRole: String(item.createdByRole || creator?.role || ""),
+    createdByPhone: String(item.createdByPhone || creator?.phone || ""),
+  };
 }
 
 function toResponse(data: any) {
@@ -473,6 +485,17 @@ const api = {
       );
     }
 
+    if (path === "/staff-users") {
+      await ensureDataSession();
+      const storedUsers = await readAllUsers();
+      return toResponse(
+        sortUsers([
+          ...getStaticUsers().map(sanitizeUserRecord),
+          ...storedUsers.map(sanitizeUserRecord),
+        ])
+      );
+    }
+
     if (path === "/patients") {
       await ensureDataSession();
       const patients = await readAllPatients();
@@ -484,7 +507,7 @@ const api = {
       const user = await ensureDataSession();
       const templates = await readAllTemplates();
       const visible = templates
-        .filter((item) => Boolean(item.isGlobal) || item.createdBy === user.id)
+        .filter((item) => String(item.createdBy || "") === String(user.id || ""))
         .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
       return toResponse(visible);
     }
@@ -503,6 +526,7 @@ const api = {
       }
 
       const patient = normalizeRecord(patientSnap.data())!;
+      const allUsers = [...getStaticUsers(), ...(await readAllUsers())];
       const prescriptions = (await readAllPrescriptions())
         .filter((item) => {
           if (String(item.patientId || "") === patientId) return true;
@@ -510,6 +534,7 @@ const api = {
           return metadata.historyNumbers.has(String(patient.historyNumber || "").trim()) ||
             metadata.personalIds.has(String(patient.personalId || "").trim());
         })
+        .map((item) => resolveCreatorMetadata(item, allUsers))
         .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
 
       return toResponse({
@@ -530,12 +555,14 @@ const api = {
       let patient = null;
 
       if (prescription.patientId) {
-        const patientSnap = await getDoc(doc(firebaseDb, "patients", String(prescription.patientId)));
-        patient = patientSnap.exists() ? normalizeRecord(patientSnap.data()) : null;
+      const patientSnap = await getDoc(doc(firebaseDb, "patients", String(prescription.patientId)));
+      patient = patientSnap.exists() ? normalizeRecord(patientSnap.data()) : null;
       }
 
+      const allUsers = [...getStaticUsers(), ...(await readAllUsers())];
+
       return toResponse({
-        ...prescription,
+        ...resolveCreatorMetadata(prescription, allUsers),
         patient,
       });
     }
@@ -578,11 +605,12 @@ const api = {
       const username = normalizeUsername(body?.username);
       const password = String(body?.password || "");
       const name = String(body?.name || "").trim();
+      const phone = String(body?.phone || "").trim();
       const role = String(body?.role || "").trim();
       const existingUsers = [...getStaticUsers(), ...(await readAllUsers())];
       const duplicate = existingUsers.some((item) => normalizeUsername(item.username) === username);
 
-      if (!username || !password || !name || !MANAGED_USER_ROLES.has(role) || duplicate) {
+      if (!username || !password || !name || !phone || !MANAGED_USER_ROLES.has(role) || duplicate) {
         throw new Error("Invalid user data");
       }
 
@@ -594,6 +622,7 @@ const api = {
         password,
         role,
         name,
+        phone,
         createdAt,
         updatedAt: createdAt,
       };
@@ -648,6 +677,9 @@ const api = {
         patientHistoryNumber: String(body?.patientHistoryNumber || "").trim(),
         patientPersonalId: String(body?.patientPersonalId || "").trim(),
         createdBy: user.id,
+        createdByName: String(user.name || "").trim(),
+        createdByRole: String(user.role || "").trim(),
+        createdByPhone: String(user.phone || "").trim(),
         createdAt,
         updatedAt: createdAt,
       };
@@ -665,6 +697,7 @@ const api = {
         type: String(body?.type || "").trim(),
         data: JSON.stringify(body?.data ?? {}),
         createdBy: user.id,
+        createdByName: String(user.name || "").trim(),
         isGlobal: Boolean(body?.isGlobal),
         createdAt: nowIso(),
       };
@@ -702,6 +735,9 @@ const api = {
       const nextName = Object.prototype.hasOwnProperty.call(body || {}, "name")
         ? String(body?.name || "").trim()
         : String(currentValue.name || "");
+      const nextPhone = Object.prototype.hasOwnProperty.call(body || {}, "phone")
+        ? String(body?.phone || "").trim()
+        : String(currentValue.phone || "");
       const nextPassword = Object.prototype.hasOwnProperty.call(body || {}, "password")
         ? String(body?.password || "")
         : String(currentValue.password || "");
@@ -710,7 +746,7 @@ const api = {
         (item) => item.id !== userId && normalizeUsername(item.username) === nextUsername
       );
 
-      if (!nextUsername || !nextName || !nextPassword || !MANAGED_USER_ROLES.has(nextRole) || duplicate) {
+      if (!nextUsername || !nextName || !nextPhone || !nextPassword || !MANAGED_USER_ROLES.has(nextRole) || duplicate) {
         throw new Error("Invalid user data");
       }
 
@@ -719,6 +755,7 @@ const api = {
         username: nextUsername,
         role: nextRole,
         name: nextName,
+        phone: nextPhone,
         password: nextPassword,
         updatedAt: nowIso(),
       };
@@ -809,9 +846,18 @@ const api = {
     }
 
     if (path.startsWith("/templates/")) {
-      await ensureDataSession();
+      const user = await ensureDataSession();
       const templateId = path.slice("/templates/".length);
-      await deleteDoc(doc(firebaseDb, "templates", templateId));
+      const templateRef = doc(firebaseDb, "templates", templateId);
+      const templateSnap = await getDoc(templateRef);
+      if (!templateSnap.exists()) {
+        throw new Error("Template not found");
+      }
+      const template = normalizeRecord(templateSnap.data())!;
+      if (String(template.createdBy || "") !== String(user.id || "") && user.role !== "admin") {
+        throw new Error("FORBIDDEN");
+      }
+      await deleteDoc(templateRef);
       return toResponse({ ok: true });
     }
 
