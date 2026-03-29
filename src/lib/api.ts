@@ -112,6 +112,59 @@ function normalizeLookupValue(value: string) {
   return String(value || "").trim();
 }
 
+function collectLookupVariants(value: unknown) {
+  const raw = normalizeLookupValue(String(value || ""));
+  const variants = new Set<string>();
+
+  if (!raw) {
+    return variants;
+  }
+
+  variants.add(raw);
+
+  const collapsed = raw.replace(/\s+/g, "");
+  if (collapsed) {
+    variants.add(collapsed);
+  }
+
+  const digitsOnly = raw.replace(/\D+/g, "");
+  if (digitsOnly) {
+    variants.add(digitsOnly);
+  }
+
+  const firstChunk = raw
+    .split(/[./\\\-\s]+/)
+    .map((part) => part.trim())
+    .find(Boolean);
+  if (firstChunk) {
+    variants.add(firstChunk);
+  }
+
+  const firstDigitChunk = raw.match(/\d+/)?.[0];
+  if (firstDigitChunk) {
+    variants.add(firstDigitChunk);
+  }
+
+  return variants;
+}
+
+function matchesLookupValue(sourceValue: unknown, lookupValue: unknown) {
+  const sourceVariants = collectLookupVariants(sourceValue);
+  const lookupVariants = collectLookupVariants(lookupValue);
+
+  if (sourceVariants.size === 0 || lookupVariants.size === 0) {
+    return false;
+  }
+
+  for (const variant of sourceVariants) {
+    if (lookupVariants.has(variant)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function safeJsonParse(value: unknown) {
   if (typeof value !== "string" || !value.trim()) return null;
   try {
@@ -124,10 +177,7 @@ function safeJsonParse(value: unknown) {
 function collectCandidateValues(...values: unknown[]) {
   const set = new Set<string>();
   values.flat(Infinity).forEach((value) => {
-    const normalized = String(value || "").trim();
-    if (normalized) {
-      set.add(normalized);
-    }
+    collectLookupVariants(value).forEach((variant) => set.add(variant));
   });
   return set;
 }
@@ -292,8 +342,7 @@ async function fetchRegistryPatient(historyNumber: string) {
   const ageIndex = findHeaderIndex(headers, ["ასაკი"], 9);
   const admissionDateIndex = findHeaderIndex(headers, ["თარიღი"], 6);
 
-  const normalizedHistoryNumber = normalizeLookupValue(historyNumber);
-  const foundRow = dataRows.find((row) => normalizeLookupValue(safeCell(row, historyIndex)) === normalizedHistoryNumber);
+  const foundRow = dataRows.find((row) => matchesLookupValue(safeCell(row, historyIndex), historyNumber));
 
   if (!foundRow) {
     const error = new Error("Patient not found in registry");

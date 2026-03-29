@@ -121,6 +121,59 @@ function normalizeLookupValue(value) {
   return String(value || "").trim();
 }
 
+function collectLookupVariants(value) {
+  const raw = normalizeLookupValue(String(value || ""));
+  const variants = new Set();
+
+  if (!raw) {
+    return variants;
+  }
+
+  variants.add(raw);
+
+  const collapsed = raw.replace(/\s+/g, "");
+  if (collapsed) {
+    variants.add(collapsed);
+  }
+
+  const digitsOnly = raw.replace(/\D+/g, "");
+  if (digitsOnly) {
+    variants.add(digitsOnly);
+  }
+
+  const firstChunk = raw
+    .split(/[./\\\-\s]+/)
+    .map((part) => part.trim())
+    .find(Boolean);
+  if (firstChunk) {
+    variants.add(firstChunk);
+  }
+
+  const firstDigitChunk = raw.match(/\d+/)?.[0];
+  if (firstDigitChunk) {
+    variants.add(firstDigitChunk);
+  }
+
+  return variants;
+}
+
+function matchesLookupValue(sourceValue, lookupValue) {
+  const sourceVariants = collectLookupVariants(sourceValue);
+  const lookupVariants = collectLookupVariants(lookupValue);
+
+  if (sourceVariants.size === 0 || lookupVariants.size === 0) {
+    return false;
+  }
+
+  for (const variant of sourceVariants) {
+    if (lookupVariants.has(variant)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 let registryRowsPromise = null;
 
 function toRegistryCellValue(cell) {
@@ -269,9 +322,7 @@ export async function fetchRegistryPatient(historyNumber) {
   const ageIndex = findHeaderIndex(headers, ["ასაკი"], 9);
   const admissionDateIndex = findHeaderIndex(headers, ["თარიღი"], 6);
 
-  const foundRow = dataRows.find(
-    (row) => normalizeLookupValue(safeCell(row, historyIndex)) === normalizeLookupValue(historyNumber)
-  );
+  const foundRow = dataRows.find((row) => matchesLookupValue(safeCell(row, historyIndex), historyNumber));
 
   if (!foundRow) {
     throw new Error("Patient not found in registry");

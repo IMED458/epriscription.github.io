@@ -79,9 +79,10 @@ export function printPrescription({
 
       for (let subRow = 0; subRow < SUB_ROWS; subRow += 1) {
         const isFirst = subRow === 0;
-        const topBorder = isFirst ? "" : "border-top:1px solid #000;";
+        const isLast = subRow === SUB_ROWS - 1;
+        const horizontalBorders = `border-top:1px solid #000;${isLast ? "border-bottom:1px solid #000;" : ""}`;
 
-        html += "<tr>";
+        html += `<tr style="height:${ROW_HEIGHT}px;">`;
 
         if (isFirst) {
           html += `<td rowspan="${SUB_ROWS}" style="
@@ -92,7 +93,7 @@ export function printPrescription({
             padding:0;
             height:${BLOCK_HEIGHT}px;
           "><div style="
-            height:${BLOCK_HEIGHT}px;
+            height:${BLOCK_HEIGHT - 2}px;
             display:flex;
             align-items:center;
             justify-content:center;
@@ -102,39 +103,49 @@ export function printPrescription({
             border:1px solid #000;
             vertical-align:top;
             font-size:8pt;
-            padding:3px 5px;
+            padding:0;
             height:${BLOCK_HEIGHT}px;
           "><div style="
-            height:${BLOCK_HEIGHT - 6}px;
-            max-height:${BLOCK_HEIGHT - 6}px;
+            height:${BLOCK_HEIGHT - 2}px;
+            max-height:${BLOCK_HEIGHT - 2}px;
+            padding:3px 5px;
             overflow:hidden;
             line-height:1.15;
             word-break:break-word;
+            white-space:pre-wrap;
           ">${text}</div></td>`;
         }
 
         html += `<td style="
           border-left:1px solid #000;
           border-right:1px solid #000;
-          ${topBorder}
+          ${horizontalBorders}
           height:${ROW_HEIGHT}px;
           padding:0;
           font-size:8pt;
+        "><div style="
+          height:${ROW_HEIGHT - 1}px;
+          display:flex;
+          align-items:center;
+          justify-content:center;
           text-align:center;
-          vertical-align:middle;
-        ">${isFirst ? time : ""}</td>`;
+        ">${isFirst ? time : ""}</div></td>`;
 
         for (let dateIndex = 0; dateIndex < DATE_COLS; dateIndex += 1) {
           html += `<td style="
             border-left:1px solid #000;
             border-right:1px solid #000;
-            ${topBorder}
+            ${horizontalBorders}
             height:${ROW_HEIGHT}px;
             padding:0;
             font-size:8pt;
+          "><div style="
+            height:${ROW_HEIGHT - 1}px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
             text-align:center;
-            vertical-align:middle;
-          ">${isFirst ? dates[dateIndex] : ""}</td>`;
+          ">${isFirst ? dates[dateIndex] : ""}</div></td>`;
         }
 
         html += "</tr>";
