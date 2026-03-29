@@ -94,9 +94,10 @@ export default function PatientProfile() {
       <div className="flex items-center gap-4">
         <button 
           onClick={() => navigate("/")}
-          className="p-2 hover:bg-white rounded-xl text-slate-400 hover:text-slate-900 transition-all border border-transparent hover:border-slate-200"
+          className="inline-flex items-center gap-2 rounded-2xl bg-blue-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:bg-blue-800 hover:shadow-lg"
         >
-          <ChevronLeft size={24} />
+          <ChevronLeft size={20} />
+          <span>უკან დაბრუნება</span>
         </button>
         <h1 className="text-3xl font-bold text-slate-900">პაციენტის პროფილი</h1>
       </div>

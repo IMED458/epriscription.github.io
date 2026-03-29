@@ -94,8 +94,12 @@ export default function NewPatient() {
   return (
     <div className="space-y-8 max-w-3xl mx-auto">
       <div className="flex items-center gap-4">
-        <button onClick={() => navigate("/")} className="p-2 hover:bg-white rounded-xl text-slate-400 transition-all border border-transparent hover:border-slate-200">
-          <ChevronLeft size={24} />
+        <button
+          onClick={() => navigate("/")}
+          className="inline-flex items-center gap-2 rounded-2xl bg-blue-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:bg-blue-800 hover:shadow-lg"
+        >
+          <ChevronLeft size={20} />
+          <span>უკან დაბრუნება</span>
         </button>
         <h1 className="text-3xl font-bold text-slate-900">ახალი პაციენტის დამატება</h1>
       </div>

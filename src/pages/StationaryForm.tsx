@@ -12,6 +12,18 @@ export default function StationaryForm() {
   const printRef = useRef<HTMLDivElement>(null);
   const params = new URLSearchParams(location.search);
   const prescriptionId = params.get("prescriptionId");
+
+  const getCurrentDoctorName = () => {
+    if (typeof window === "undefined") return "";
+
+    try {
+      const rawUser = window.localStorage.getItem("user");
+      const parsedUser = rawUser ? JSON.parse(rawUser) : null;
+      return String(parsedUser?.name || "").trim();
+    } catch (_) {
+      return "";
+    }
+  };
   
   const [patient, setPatient] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -26,6 +38,7 @@ export default function StationaryForm() {
     allergy: "",
     department: "",
     room: "",
+    doctorName: getCurrentDoctorName(),
     medications: [
       { id: Date.now(), name: "", timeSlots: Array(4).fill(""), dates: Array(7).fill("") }
     ]
@@ -71,6 +84,7 @@ export default function StationaryForm() {
     allergy: data?.allergy || "",
     department: data?.department || "",
     room: data?.room || "",
+    doctorName: String(data?.doctorName || getCurrentDoctorName()).trim(),
     medications: Array.isArray(data?.medications) && data.medications.length > 0
       ? applySharedDatesToMedications(data.medications.map((med: any) => ({
           id: med?.id || Date.now() + Math.random(),
@@ -199,23 +213,33 @@ export default function StationaryForm() {
 
   const handleSave = async () => {
     setSaving(true);
+    const currentDoctorName = getCurrentDoctorName();
+    const payloadData = {
+      ...formData,
+      doctorName: currentDoctorName || formData.doctorName || "",
+    };
+
     try {
       if (prescriptionId) {
         await api.put(`/prescriptions/${prescriptionId}`, {
           type: "stationary",
           patientHistoryNumber: patient?.historyNumber || "",
           patientPersonalId: patient?.personalId || "",
-          data: formData,
+          data: payloadData,
         });
       } else {
         await api.post("/prescriptions", {
           type: "stationary",
-          data: formData,
+          data: payloadData,
           patientId: normalizedPatientId,
           patientHistoryNumber: patient?.historyNumber || "",
           patientPersonalId: patient?.personalId || "",
         });
       }
+      setFormData((prev) => ({
+        ...prev,
+        doctorName: payloadData.doctorName,
+      }));
       toast.success("დანიშნულება წარმატებით შეინახა");
       navigate(`/patients/${id}`);
     } catch (err) {
@@ -253,6 +277,7 @@ export default function StationaryForm() {
     if (!patient) return;
 
     const sharedDates = getSharedMedicationDates(formData.medications);
+    const currentDoctorName = getCurrentDoctorName() || formData.doctorName || "";
     const printableItems = formData.medications.map((medication, index) => ({
       index: index + 1,
       text: formatMedicationPrintLabel(medication),
@@ -276,6 +301,7 @@ export default function StationaryForm() {
         department: formData.department,
         ward: formData.room,
       },
+      doctorName: currentDoctorName,
       items: printableItems,
     });
   };
@@ -286,8 +312,12 @@ export default function StationaryForm() {
     <div className="space-y-6 pb-20">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate(`/patients/${id}`)} className="p-2 hover:bg-white rounded-xl text-slate-400 transition-all border border-transparent hover:border-slate-200">
-            <ChevronLeft size={24} />
+          <button
+            onClick={() => navigate(`/patients/${id}`)}
+            className="inline-flex items-center gap-2 rounded-2xl bg-blue-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:bg-blue-800 hover:shadow-lg"
+          >
+            <ChevronLeft size={20} />
+            <span>უკან დაბრუნება</span>
           </button>
           <h1 className="text-2xl font-bold text-slate-900">სტაციონარის დანიშნულება</h1>
         </div>

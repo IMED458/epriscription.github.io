@@ -26,6 +26,7 @@ type PrintPrescriptionOptions = {
   prescription?: PrintablePrescription;
   formNumber?: string;
   items?: PrintableItem[];
+  doctorName?: string;
 };
 
 function escapeHtml(value: unknown) {
@@ -42,6 +43,7 @@ export function printPrescription({
   prescription = {},
   formNumber,
   items = [],
+  doctorName = "",
 }: PrintPrescriptionOptions) {
   const num = formNumber || "20032269103637";
 
@@ -227,8 +229,9 @@ export function printPrescription({
         </td>
       </tr>
       <tr>
-        <td style="border:1px solid #000;padding:6px 8px;font-size:8pt;height:36px;vertical-align:top;border-top:none;">
+        <td style="border:1px solid #000;padding:6px 8px;font-size:8pt;height:42px;vertical-align:top;border-top:none;">
           დანიშნულების შესრულებას ვადასტურებ<br/>მკურნალი ექიმი
+          ${doctorName ? `<div style="margin-top:4px;font-weight:700;">${escapeHtml(doctorName)}</div>` : ""}
         </td>
       </tr>
     </table>`;
