@@ -65,17 +65,20 @@ export function printPrescription({
       time: String(item.time || ""),
       dates: Array.from({ length: DATE_COLS }).map((_, dateIndex) => String(item.dates?.[dateIndex] || "")),
     }));
-  function buildTableBody(pageItems: PrintableItem[], pageStartIndex: number) {
+  const sharedDates = Array.from({ length: DATE_COLS }).map((_, dateIndex) => {
+    const firstFilledDate = normalizedItems
+      .map((item) => String(item.dates?.[dateIndex] || "").trim())
+      .find(Boolean);
+    return escapeHtml(firstFilledDate || "");
+  });
+
+  function buildTableBody(pageItems: PrintableItem[]) {
     let html = "";
 
-    for (const [itemIndex, item] of pageItems.entries()) {
+    for (const item of pageItems) {
       const blockNum = Number(item.index || 0) || 0;
       const text = escapeHtml(item.text || "");
       const time = escapeHtml(item.time || "");
-      const shouldRenderDates = pageStartIndex === 0 && itemIndex === 0;
-      const dates = Array.from({ length: DATE_COLS }).map((_, dateIndex) =>
-        escapeHtml(shouldRenderDates ? item.dates?.[dateIndex] || "" : "")
-      );
 
       for (let subRow = 0; subRow < SUB_ROWS; subRow += 1) {
         const isFirst = subRow === 0;
@@ -145,7 +148,7 @@ export function printPrescription({
             align-items:center;
             justify-content:center;
             text-align:center;
-          ">${isFirst ? dates[dateIndex] : ""}</div></td>`;
+          "></div></td>`;
         }
 
         html += "</tr>";
@@ -200,12 +203,12 @@ export function printPrescription({
         </tr>
         <tr>
           ${Array.from({ length: DATE_COLS })
-            .map(() => `<td style="border:1px solid #000;height:14px;padding:0;"></td>`)
+            .map((_, dateIndex) => `<td style="border:1px solid #000;height:14px;padding:0;font-size:8pt;text-align:center;vertical-align:middle;">${pageStartIndex === 0 ? sharedDates[dateIndex] : ""}</td>`)
             .join("")}
         </tr>
       </thead>
       <tbody>
-        ${buildTableBody(pageItems, pageStartIndex)}
+        ${buildTableBody(pageItems)}
       </tbody>
     </table>`;
   }
