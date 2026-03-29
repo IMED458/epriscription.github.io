@@ -14,6 +14,8 @@ const AUTH_STORAGE_KEY = "token";
 const USER_STORAGE_KEY = "user";
 const PATIENT_REGISTRY_CSV_URL =
   "https://docs.google.com/spreadsheets/d/1zsuLPC1hDVJ1pzGMsk_LY1bILCF6Dbd7/export?format=csv&gid=226530235";
+const PATIENT_REGISTRY_GVIZ_URL =
+  "https://docs.google.com/spreadsheets/d/1zsuLPC1hDVJ1pzGMsk_LY1bILCF6Dbd7/gviz/tq?gid=226530235";
 const firebaseConfig = {
   apiKey: "AIzaSyAiC-U155Z6QZ_fFU54by8dG3hbpx56-f4",
   authDomain: "epriscription-bb066.firebaseapp.com",
@@ -33,6 +35,166 @@ const DEFAULT_APP_USER = {
   role: "admin",
   name: "ადმინისტრატორი",
 };
+
+function parseCsvRows(csv) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < csv.length; index += 1) {
+    const char = csv[index];
+
+    if (inQuotes) {
+      if (char === "\"") {
+        if (csv[index + 1] === "\"") {
+          cell += "\"";
+          index += 1;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cell += char;
+      }
+      continue;
+    }
+
+    if (char === "\"") {
+      inQuotes = true;
+      continue;
+    }
+
+    if (char === ",") {
+      row.push(cell.trim());
+      cell = "";
+      continue;
+    }
+
+    if (char === "\n") {
+      row.push(cell.trim());
+      if (row.some((value) => value !== "")) {
+        rows.push(row);
+      }
+      row = [];
+      cell = "";
+      continue;
+    }
+
+    if (char === "\r") {
+      continue;
+    }
+
+    cell += char;
+  }
+
+  row.push(cell.trim());
+  if (row.some((value) => value !== "")) {
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+function normalizeHeader(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[№#]/g, "n")
+    .replace(/[^0-9a-zა-ჰ]+/g, "");
+}
+
+function findHeaderIndex(headers, candidates, fallbackIndex = -1) {
+  const normalizedHeaders = headers.map(normalizeHeader);
+  for (const candidate of candidates) {
+    const index = normalizedHeaders.indexOf(candidate);
+    if (index !== -1) return index;
+  }
+  return fallbackIndex;
+}
+
+function safeCell(row, index) {
+  if (index < 0 || index >= row.length) return "";
+  return String(row[index] || "").trim();
+}
+
+function normalizeLookupValue(value) {
+  return String(value || "").trim();
+}
+
+let registryRowsPromise = null;
+
+function toRegistryCellValue(cell) {
+  if (!cell) return "";
+  return String(cell.f ?? cell.v ?? "").trim();
+}
+
+function convertRegistryTableToRows(payload) {
+  const headers = Array.isArray(payload?.table?.cols)
+    ? payload.table.cols.map((column) => String(column?.label || "").trim())
+    : [];
+  const dataRows = Array.isArray(payload?.table?.rows)
+    ? payload.table.rows.map((row) => Array.isArray(row?.c) ? row.c.map(toRegistryCellValue) : [])
+    : [];
+  return [headers, ...dataRows].filter((row) => row.some((value) => String(value || "").trim() !== ""));
+}
+
+async function loadRegistryRows() {
+  if (registryRowsPromise) {
+    return registryRowsPromise;
+  }
+
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    registryRowsPromise = fetch(PATIENT_REGISTRY_CSV_URL)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch from registry");
+        }
+        return response.text();
+      })
+      .then(parseCsvRows)
+      .catch((error) => {
+        registryRowsPromise = null;
+        throw error;
+      });
+    return registryRowsPromise;
+  }
+
+  registryRowsPromise = new Promise((resolve, reject) => {
+    const callbackName = `__registryCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const script = document.createElement("script");
+    const url = new URL(PATIENT_REGISTRY_GVIZ_URL);
+    url.searchParams.set("tqx", `responseHandler:${callbackName};out:json`);
+
+    const cleanup = () => {
+      delete window[callbackName];
+      script.remove();
+    };
+
+    window[callbackName] = (payload) => {
+      cleanup();
+      if (payload?.status !== "ok") {
+        registryRowsPromise = null;
+        reject(new Error("Failed to fetch from registry"));
+        return;
+      }
+      resolve(convertRegistryTableToRows(payload));
+    };
+
+    script.onerror = () => {
+      cleanup();
+      registryRowsPromise = null;
+      reject(new Error("Failed to fetch from registry"));
+    };
+
+    script.src = url.toString();
+    document.head.appendChild(script);
+  }).catch((error) => {
+    registryRowsPromise = null;
+    throw error;
+  });
+
+  return registryRowsPromise;
+}
 
 export function getQueryParams() {
   return new URLSearchParams(window.location.search);
@@ -91,30 +253,43 @@ export async function fetchPatient(patientId) {
 }
 
 export async function fetchRegistryPatient(historyNumber) {
-  const response = await fetch(PATIENT_REGISTRY_CSV_URL);
-  if (!response.ok) {
-    throw new Error("Failed to fetch from registry");
-  }
+  const rows = await loadRegistryRows();
+  const headers = rows[0] || [];
+  const dataRows = rows.slice(1);
+  const historyIndex = findHeaderIndex(headers, ["ისტn", "ისტორია", "ისტორიანომერი"], 5);
+  const firstNameIndex = findHeaderIndex(headers, ["სახელი"], 2);
+  const lastNameIndex = findHeaderIndex(headers, ["გვარი"], 1);
+  const personalIdIndex = findHeaderIndex(headers, ["პირადინ", "პირადინომერი"], 3);
+  const birthDateIndex = findHeaderIndex(headers, ["დაბადებისთარიღი", "დაბადება"], -1);
+  const genderIndex = findHeaderIndex(headers, ["სქესი"], -1);
+  const phoneIndex = findHeaderIndex(headers, ["ტელეფონი", "მობილური"], -1);
+  const addressIndex = findHeaderIndex(headers, ["მისამართი"], -1);
+  const diagnosisIndex = findHeaderIndex(headers, ["დიაგნოზი"], 7);
+  const departmentIndex = findHeaderIndex(headers, ["განყოფილება"], 8);
+  const ageIndex = findHeaderIndex(headers, ["ასაკი"], 9);
+  const admissionDateIndex = findHeaderIndex(headers, ["თარიღი"], 6);
 
-  const csv = await response.text();
-  const rows = csv
-    .split("\n")
-    .map((row) => row.split(",").map((cell) => cell.trim()));
-  const foundRow = rows.slice(1).find((row) => row[0] === String(historyNumber || "").trim());
+  const foundRow = dataRows.find(
+    (row) => normalizeLookupValue(safeCell(row, historyIndex)) === normalizeLookupValue(historyNumber)
+  );
 
   if (!foundRow) {
     throw new Error("Patient not found in registry");
   }
 
   return {
-    historyNumber: foundRow[0] || "",
-    firstName: foundRow[1] || "",
-    lastName: foundRow[2] || "",
-    personalId: foundRow[3] || "",
-    birthDate: foundRow[4] || "",
-    gender: foundRow[5] || "",
-    phone: foundRow[6] || "",
-    address: foundRow[7] || "",
+    historyNumber: safeCell(foundRow, historyIndex),
+    firstName: safeCell(foundRow, firstNameIndex),
+    lastName: safeCell(foundRow, lastNameIndex),
+    personalId: safeCell(foundRow, personalIdIndex),
+    birthDate: safeCell(foundRow, birthDateIndex),
+    gender: safeCell(foundRow, genderIndex),
+    phone: safeCell(foundRow, phoneIndex),
+    address: safeCell(foundRow, addressIndex),
+    diagnosis: safeCell(foundRow, diagnosisIndex),
+    department: safeCell(foundRow, departmentIndex),
+    age: safeCell(foundRow, ageIndex),
+    admissionDate: safeCell(foundRow, admissionDateIndex),
   };
 }
 
@@ -127,7 +302,14 @@ export async function fetchPrescription(prescriptionId) {
   return normalizeRecord(snapshot.data());
 }
 
-export async function savePrescription({ prescriptionId, type, patientId, data }) {
+export async function savePrescription({
+  prescriptionId,
+  type,
+  patientId,
+  patientHistoryNumber = "",
+  patientPersonalId = "",
+  data,
+}) {
   const user = await ensureDataSession();
 
   if (prescriptionId) {
@@ -141,6 +323,8 @@ export async function savePrescription({ prescriptionId, type, patientId, data }
       ...normalizeRecord(current.data()),
       ...(type ? { type } : {}),
       data: JSON.stringify(data ?? {}),
+      patientHistoryNumber: String(patientHistoryNumber || "").trim(),
+      patientPersonalId: String(patientPersonalId || "").trim(),
       updatedAt: nowIso(),
     };
 
@@ -155,6 +339,8 @@ export async function savePrescription({ prescriptionId, type, patientId, data }
     type: String(type || ""),
     data: JSON.stringify(data ?? {}),
     patientId: String(patientId || ""),
+    patientHistoryNumber: String(patientHistoryNumber || "").trim(),
+    patientPersonalId: String(patientPersonalId || "").trim(),
     createdBy: user.id,
     createdAt,
     updatedAt: createdAt,

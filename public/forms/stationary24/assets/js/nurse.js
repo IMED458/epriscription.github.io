@@ -299,6 +299,7 @@ async function saveHistory() {
     prescriptionId: currentPrescriptionId,
     type: "stationary24",
     patientId: normalizedPatientId,
+    patientHistoryNumber: nurse.header?.historyNo || observation?.observation?.header?.hist || "",
     data: {
       observation: observation?.observation || null,
       nurse,

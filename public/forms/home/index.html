@@ -452,6 +452,7 @@
           prescriptionId: currentPrescriptionId,
           type: HOME_TYPE,
           patientId: normalizedPatientId,
+          patientHistoryNumber: payload.historyNumber,
           data: payload
         });
         currentPrescriptionId = String(saved.id);

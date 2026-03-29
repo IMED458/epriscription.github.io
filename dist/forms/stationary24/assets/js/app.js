@@ -411,6 +411,7 @@ async function saveHistory() {
     prescriptionId: currentPrescriptionId,
     type: TEMPLATE_TYPE,
     patientId: normalizedPatientId,
+    patientHistoryNumber: getObservationPayload().header?.hist || "",
     data: {
       observation: getObservationPayload(),
       nurse: readNursePayload(),

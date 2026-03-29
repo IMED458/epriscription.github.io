@@ -133,6 +133,8 @@ export default function StationaryForm() {
       if (prescriptionId) {
         await api.put(`/prescriptions/${prescriptionId}`, {
           type: "stationary",
+          patientHistoryNumber: patient?.historyNumber || "",
+          patientPersonalId: patient?.personalId || "",
           data: formData,
         });
       } else {
@@ -140,6 +142,8 @@ export default function StationaryForm() {
           type: "stationary",
           data: formData,
           patientId: normalizedPatientId,
+          patientHistoryNumber: patient?.historyNumber || "",
+          patientPersonalId: patient?.personalId || "",
         });
       }
       toast.success("დანიშნულება წარმატებით შეინახა");
