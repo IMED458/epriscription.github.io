@@ -1,0 +1,317 @@
+  body { font-family: Arial, sans-serif; margin:0; padding:4px; background:#f0f9ff; position:relative; }
+  .c { max-width:297mm; margin:auto; background:white; border-radius:8px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.1); }
+  .header { background:#1e40af; color:white; padding:3px; text-align:center; font-size:9pt; line-height:1.2; }
+  .header b { font-size:10pt; }
+
+  .pname { font-size:12pt; font-weight:bold; color:#1e40af; text-align:center; padding:3px; background:#eef2ff; border-bottom:2px solid #3b82f6; margin:2px 0; }
+
+  .nav {
+    padding:6px;
+    text-align:center;
+    background:#f1f5f9;
+    font-size:13px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    justify-content:center;
+    align-items:center;
+  }
+  .btn { padding:5px 12px; border:none; background:#2563eb; color:white; border-radius:4px; cursor:pointer; font-size:12px; }
+  .btn.print { background:#059669; }
+  .btn.save-sheet { background:#0f766e; }
+  .btn.clear { background:#dc2626; }
+  .btn.delete { background:#991b1b; }
+  .btn.active { background:#1e40af; }
+  .btn.disabled { background:#94a3b8 !important; cursor:not-allowed !important; opacity:0.7; }
+  .signature-picker {
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+    font-weight:700;
+    color:#0f172a;
+    background:#e2e8f0;
+    padding:6px 10px;
+    border-radius:8px;
+  }
+  .signature-picker select {
+    border:1px solid #cbd5e1;
+    background:#fff;
+    border-radius:6px;
+    padding:4px 8px;
+    font-size:12px;
+    min-width:120px;
+  }
+
+  .page { display:none; padding:4px 6px; }
+  .page.active { display:block; }
+  .page-print-title { display:none; }
+
+  /* Info ბლოკი – 4 სვეტი, თითო უჯრაში label და value ერთ ხაზზე */
+  .info {
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:3px 6px;
+    font-size:7.5pt;
+    margin-bottom:4px;
+  }
+  .info div {
+    display:flex;
+    flex-direction:row;
+    align-items:center;
+    gap:3px;
+  }
+  .info label {
+    font-weight:600;
+    margin-bottom:0;
+    white-space:nowrap;
+  }
+  .info input,
+  .info select {
+    padding:2px 4px;
+    border:1px solid #999;
+    border-radius:3px;
+    font-size:7.5pt;
+    flex:1;
+  }
+
+  table { width:100%; border-collapse:collapse; font-size:7.3pt; margin-top:4px; table-layout:fixed; }
+  th, td { border:1px solid #555; padding:2px 1px; text-align:center; }
+  th { background:#dbeafe; font-weight:700; color:#1e40af; }
+
+  /* დრო – ჰორიზონტალური ციფრები */
+  .time {
+    font-size:7pt;
+    width:20px;
+    writing-mode:horizontal-tb;
+    text-orientation:mixed;
+  }
+
+  .num { width:24px !important; background:#e0e7ff; font-weight:bold; color:#1e40af; font-size:7.3pt; }
+  .drug { width:108px !important; text-align:left !important; background:#f8fafc; padding-left:5px; font-size:7.2pt; }
+  .drug input {
+    width:100% !important;
+    border:none !important;
+    background:transparent !important;
+    font-size:7.2pt;
+    padding:1px 3px;
+    box-sizing:border-box;
+  }
+  .dose input {
+    width:100% !important;
+    border:none !important;
+    text-align:center;
+    font-size:7.3pt;
+    padding:0;
+  }
+
+  .sign { margin-top:14px; display:grid; grid-template-columns:1fr 1fr; gap:40px; font-size:10pt; }
+  .line { border-bottom:1.5px solid #000; height:10px; margin-top:4px; }
+  .signature-slot { text-align:center; }
+  .signature-placeholder { min-height:56px; display:flex; align-items:flex-end; justify-content:center; position:relative; }
+  .signature-slot.has-signature .signature-line { display:none; }
+  .signature-wrap { display:flex; justify-content:center; min-height:50px; align-items:flex-end; }
+  .signature-slot:not(.has-signature) .signature-wrap { display:none; }
+  .signature-img { max-width:180px; max-height:50px; object-fit:contain; }
+  #nurseSignatureImg { max-width:230px; max-height:64px; }
+  .signature-img.missing { display:none; }
+  .signature-label { margin-top:4px; }
+
+  .nurse-pdf-page {
+    background:#fff;
+  }
+  .nurse-pdf-title {
+    text-align:center;
+    font-size:16pt;
+    font-weight:700;
+    line-height:1.35;
+    color:#000;
+    margin:2mm 0 5mm;
+  }
+  .nurse-head {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:4mm 10mm;
+    font-size:13pt;
+    margin:0 0 3mm;
+  }
+  .nurse-head .row { display:flex; gap:6px; align-items:center; }
+  .nurse-head label { font-weight:700; white-space:nowrap; color:#000; }
+  .nurse-head input {
+    flex:1;
+    border:none;
+    border-bottom:1px solid #000;
+    border-radius:0;
+    padding:0 2px 1px;
+    font-size:13pt;
+    background:transparent;
+  }
+  .nurse-tools {
+    display:flex;
+    justify-content:flex-end;
+    margin:4px 0 6px;
+  }
+  .nurse-sheet th, .nurse-sheet td {
+    font-size:12pt;
+    padding:0;
+    border:1px solid #555;
+    height:11mm;
+    color:#000;
+    background:#fff;
+  }
+  .nurse-sheet th {
+    text-align:center;
+    font-weight:700;
+    background:#fff;
+    color:#000;
+  }
+  .nurse-sheet .n-name {
+    text-align:left;
+    padding:0 6px;
+    font-weight:600;
+  }
+  .nurse-sheet .n-qty input {
+    width:100%;
+    height:100%;
+    border:none;
+    text-align:center;
+    background:transparent;
+    font-size:12pt;
+    padding:0;
+  }
+  .nurse-sheet {
+    width:86%;
+    margin:0 auto;
+    table-layout:fixed;
+  }
+
+  #templateName { width:150px; padding:5px; font-size:12px; }
+
+  #firebaseStatus {
+    position:fixed; top:10px; left:10px; z-index:99999;
+    padding:8px 14px; border-radius:8px; font-size:13px; font-weight:bold;
+    color:white; box-shadow:0 4px 15px rgba(0,0,0,0.2); transition:all 0.4s;
+  }
+  .status-online { background:#16a34a; }
+  .status-offline { background:#dc2626; }
+  .status-connecting { background:#ea580c; animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
+
+  #templateModal {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9999;
+    justify-content:center; align-items:center; padding:20px; box-sizing:border-box;
+  }
+  #templateModal > div {
+    background:white; width:90%; max-width:520px; border-radius:12px; overflow:hidden; box-shadow:0 15px 40px rgba(0,0,0,0.4);
+  }
+  #templateModal .head { background:#1e40af; color:white; padding:14px 20px; font-size:17px; font-weight:bold; }
+  #templateModal .close { float:right; cursor:pointer; font-size:20px; }
+  #templateModal .body { padding:20px; max-height:65vh; overflow-y:auto; }
+  .template-item {
+    padding:14px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;
+    background:#fafafa; margin-bottom:8px; border-radius:6px;
+  }
+  #noTemplates { text-align:center; color:#888; padding:30px; font-size:15px; }
+
+  /* მონიშნული უჯრედები (Excel სტილში) */
+  input.selected-cell {
+    background:#fee2e2 !important;
+  }
+
+  @media print {
+    @page { size: A4 landscape; margin:0 !important; }
+    html, body {
+      margin:0 !important;
+      padding:0 !important;
+      width:297mm !important;
+      background:white !important;
+    }
+    body, .c {
+      margin:0 !important;
+      padding:0 !important;
+      width:297mm !important;
+      max-width:297mm !important;
+      background:white !important;
+      box-shadow:none !important;
+      border-radius:0 !important;
+      overflow:visible !important;
+    }
+    .header, .nav, #templateModal, #firebaseStatus, .nurse-tools { display:none !important; }
+    .page {
+      display:block !important;
+      page-break-after:always;
+      break-after:page;
+      page-break-inside:avoid;
+      break-inside:avoid-page;
+      padding:4mm !important;
+      width:297mm !important;
+      height:210mm !important;
+      min-height:210mm !important;
+      box-sizing:border-box;
+      overflow:hidden !important;
+    }
+    .page:last-child { page-break-after:auto !important; }
+    input, select { border:none !important; background:transparent !important; }
+
+    /* select-ის ისრების მოცილება საბეჭდზე */
+    select {
+      -webkit-appearance:none !important;
+      -moz-appearance:none !important;
+      appearance:none !important;
+      background-image:none !important;
+      padding-right:0 !important;
+    }
+
+    th, td { border:1px solid black !important; font-size:6.4pt !important; padding:1px !important; }
+    .time { font-size:6pt !important; }
+    .drug input, .dose input { font-size:6.3pt !important; }
+    .nurse-sheet th, .nurse-sheet td, .nurse-sheet .n-qty input { font-size:10pt !important; }
+    .signature-img { max-width:190px !important; max-height:42px !important; }
+    #nurseSignatureImg { max-width:250px !important; max-height:56px !important; }
+
+    .page.page-observation {
+      display:flex !important;
+      flex-direction:column;
+      gap:2mm;
+      padding:3mm 4mm 4mm !important;
+    }
+    .page.page-observation .page-print-title {
+      display:block !important;
+      text-align:center;
+      font-size:11pt;
+      font-weight:700;
+      color:#000;
+      margin:0;
+      line-height:1.2;
+    }
+    .page.page-observation .info {
+      font-size:8.1pt !important;
+      gap:2mm 4mm !important;
+      margin-bottom:0 !important;
+    }
+    .page.page-observation .info input,
+    .page.page-observation .info select {
+      font-size:7.9pt !important;
+      padding:1px 2px !important;
+    }
+    .page.page-observation #meds {
+      flex:1 1 auto;
+      margin-top:0 !important;
+    }
+    .page.page-observation #meds tr {
+      height:4.9mm;
+    }
+    .page.page-observation #meds th,
+    .page.page-observation #meds td {
+      font-size:7pt !important;
+      padding:1px !important;
+    }
+    .page.page-observation #meds .num,
+    .page.page-observation #meds .drug,
+    .page.page-observation #meds .drug input,
+    .page.page-observation #meds .dose input,
+    .page.page-observation #meds .time {
+      font-size:7pt !important;
+    }
+  }
+</style>

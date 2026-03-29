@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8">
+  <title>დაკვირვების ფურცელი</title>
+  <link rel="icon" type="image/png" href="priscription.png">
+  <link rel="shortcut icon" type="image/png" href="priscription.png">
+  <link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+  <div id="firebaseStatus" class="status-connecting">მიმდინარეობს სისტემასთან დაკავშირება...</div>
+
+  <div class="c">
+    <div class="header"><b>პაციენტის დაკვირვების ფურცელი</b><br>თსსუ და ინგოროყვას კლინიკა</div>
+
+    <div class="nav">
+      <button class="btn" id="backBtn">უკან</button>
+      <button class="btn active" data-page="1">1</button>
+      <button class="btn" data-page="2">2</button>
+      <button class="btn" id="nurseOpenBtn">ექთანი</button>
+      <button class="btn print" id="printBtn">ბეჭდვა</button>
+      <button class="btn save-sheet" id="patientSaveBtn">ისტორიაში შენახვა</button>
+
+      <label class="signature-picker" for="doctorSignatureSelect">
+        ექიმის ხელმოწერა
+        <select id="doctorSignatureSelect">
+          <option value="">ხაზი</option>
+          <option value="doctor-nino">ნინო კიკვაძე</option>
+        </select>
+      </label>
+
+      <label class="signature-picker" for="nurseSignatureSelect">
+        ექთნის ხელმოწერა
+        <select id="nurseSignatureSelect">
+          <option value="">ხაზი</option>
+          <option value="nurse-giorgi">გიორგი</option>
+        </select>
+      </label>
+
+      <input type="text" id="templateName" placeholder="შაბლონის სახელი">
+      <button class="btn" id="templateSaveBtn">შაბლონის შენახვა</button>
+      <button class="btn" id="templatesBtn" style="background:#7c3aed;">შაბლონები</button>
+      <button class="btn clear" id="clearBtn">გასუფთავება</button>
+    </div>
+
+    <div class="page page-observation active" id="p1">
+      <div class="page-print-title">პაციენტის დაკვირვების ფურცელი</div>
+      <div class="info">
+        <div>
+          <label>პაციენტი:</label>
+          <input type="text" id="fullName">
+        </div>
+        <div>
+          <label>ისტ.№:</label>
+          <input type="text" id="hist">
+        </div>
+        <div>
+          <label>სქესი:</label>
+          <select id="gender">
+            <option>-</option>
+            <option>მამრ.</option>
+            <option>მდედრ.</option>
+          </select>
+        </div>
+        <div>
+          <label>ასაკი:</label>
+          <input type="number" id="age">
+        </div>
+        <div>
+          <label>შემოსვლა:</label>
+          <input type="text" id="admission" class="date-field" inputmode="numeric" placeholder="დღე.თვე.წელი" maxlength="10" autocomplete="off">
+        </div>
+        <div>
+          <label>თარიღი:</label>
+          <input type="text" id="today" class="date-field" inputmode="numeric" placeholder="დღე.თვე.წელი" maxlength="10" autocomplete="off">
+        </div>
+        <div>
+          <label>ICD-10:</label>
+          <input type="text" id="icd">
+        </div>
+        <div>
+          <label>განყ.:</label>
+          <input type="text" id="dept">
+        </div>
+        <div>
+          <label>ჯგ./რეზუსი:</label>
+          <select id="blood">
+            <option value="">-</option>
+            <option value="O(I) Rh+">O(I) Rh+</option>
+            <option value="O(I) Rh-">O(I) Rh-</option>
+            <option value="A(II) Rh+">A(II) Rh+</option>
+            <option value="A(II) Rh-">A(II) Rh-</option>
+            <option value="B(III) Rh+">B(III) Rh+</option>
+            <option value="B(III) Rh-">B(III) Rh-</option>
+            <option value="AB(IV) Rh+">AB(IV) Rh+</option>
+            <option value="AB(IV) Rh-">AB(IV) Rh-</option>
+          </select>
+        </div>
+        <div>
+          <label>პალატის №:</label>
+          <input type="text" id="room">
+        </div>
+        <div>
+          <label>ალერგია:</label>
+          <input type="text" id="allergy">
+        </div>
+      </div>
+
+      <table id="meds"></table>
+    </div>
+
+    <div class="page page-monitoring" id="p2">
+      <div class="pname" id="name2">პაციენტის სახელი და გვარი</div>
+      <table id="vitals"></table>
+      <table id="enteral" style="margin:6px 0;"></table>
+      <table id="other"></table>
+      <div class="sign">
+        <div class="signature-slot" id="doctorSignatureSlot">
+          <div class="signature-placeholder">
+            <div class="line signature-line"></div>
+            <div class="signature-wrap">
+              <img class="signature-img missing" id="doctorSignatureImg" alt="ექიმის ხელმოწერა">
+            </div>
+          </div>
+          <div class="signature-label">ექიმი</div>
+        </div>
+        <div class="signature-slot" id="nurseSignatureSlot">
+          <div class="signature-placeholder">
+            <div class="line signature-line"></div>
+            <div class="signature-wrap">
+              <img class="signature-img missing" id="nurseSignatureImg" alt="ექთნის ხელმოწერა">
+            </div>
+          </div>
+          <div class="signature-label">ექთანი</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="templateModal">
+    <div>
+      <div class="head">შაბლონები <span class="close" id="closeTemplateModalBtn">X</span></div>
+      <div class="body">
+        <div id="templateItems"></div>
+        <div id="noTemplates">შაბლონები არ მოიძებნა</div>
+      </div>
+      <div style="padding:15px; background:#f8fafc; text-align:center;">
+        <button class="btn" style="background:#dc2626;" id="closeTemplateModalBtnBottom">დახურვა</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="assets/js/app.js"></script>
+</body>
+</html>

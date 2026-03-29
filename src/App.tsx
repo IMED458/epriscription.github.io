@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, Link } from "react-router-dom";
+import { BrowserRouter, HashRouter, Routes, Route, Navigate, useNavigate, Link } from "react-router-dom";
 import { Toaster, toast } from "sonner";
 import { LogOut, User as UserIcon, Search, Plus, FileText, Printer, Save, Trash2, ChevronLeft, LayoutDashboard, Settings } from "lucide-react";
 import api from "./lib/api";
@@ -262,6 +262,11 @@ const Dashboard = () => {
 export default function App() {
   const [user, setUser] = useState<any>(null);
   const [initialized, setInitialized] = useState(false);
+  const RouterComponent =
+    typeof window !== "undefined" &&
+    (window.location.hostname.endsWith("github.io") || window.location.pathname.includes("/dist/"))
+      ? HashRouter
+      : BrowserRouter;
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -287,7 +292,7 @@ export default function App() {
   if (!initialized) return null;
 
   return (
-    <BrowserRouter>
+    <RouterComponent>
       <Toaster position="top-right" richColors />
       <Routes>
         {!user ? (
@@ -302,6 +307,6 @@ export default function App() {
           </>
         )}
       </Routes>
-    </BrowserRouter>
+    </RouterComponent>
   );
 }

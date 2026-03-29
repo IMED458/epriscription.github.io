@@ -34,8 +34,8 @@ export default function PatientProfile() {
 
     const basePath =
       prescription.type === "stationary24"
-        ? "/forms/stationary24/index.html"
-        : "/forms/home/index.html";
+        ? "../forms/stationary24/index.html"
+        : "../forms/home/index.html";
     window.location.href = `${basePath}?patientId=${id}&prescriptionId=${prescription.id}`;
   };
 
@@ -137,7 +137,7 @@ export default function PatientProfile() {
             </button>
 
             <a 
-              href={`/forms/stationary24/index.html?patientId=${id}&fresh=1`}
+              href={`../forms/stationary24/index.html?patientId=${id}&fresh=1`}
               className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:border-orange-500 hover:shadow-md transition-all group"
             >
               <div className="flex items-center gap-4">
@@ -153,7 +153,7 @@ export default function PatientProfile() {
             </a>
 
             <a 
-              href={`/forms/home/index.html?patientId=${id}&fresh=1`}
+              href={`../forms/home/index.html?patientId=${id}&fresh=1`}
               className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:border-emerald-500 hover:shadow-md transition-all group"
             >
               <div className="flex items-center gap-4">
