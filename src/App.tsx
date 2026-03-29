@@ -8,6 +8,14 @@ import PatientProfile from "./pages/PatientProfile";
 import StationaryForm from "./pages/StationaryForm";
 
 import NewPatient from "./pages/NewPatient";
+import AdminUsers from "./pages/AdminUsers";
+
+const getRoleLabel = (role: string) => {
+  if (role === "admin") return "ადმინისტრატორი";
+  if (role === "doctor") return "ექიმი";
+  if (role === "junior_doctor") return "უმცროსი ექიმი";
+  return "ექთანი";
+};
 
 // --- Components ---
 
@@ -25,12 +33,15 @@ const Layout = ({ children, user, onLogout }: { children: React.ReactNode, user:
           <nav className="hidden md:flex items-center gap-6 ml-10">
             <Link to="/" className="text-slate-600 hover:text-blue-700 font-medium transition-colors">მთავარი</Link>
             <Link to="/patients" className="text-slate-600 hover:text-blue-700 font-medium transition-colors">პაციენტები</Link>
+            {user?.role === "admin" && (
+              <Link to="/admin/users" className="text-slate-600 hover:text-blue-700 font-medium transition-colors">მომხმარებლები</Link>
+            )}
           </nav>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex flex-col items-end">
             <span className="text-sm font-semibold text-slate-900">{user?.name}</span>
-            <span className="text-xs text-slate-500 uppercase tracking-wider">{user?.role === 'admin' ? 'ადმინისტრატორი' : user?.role === 'doctor' ? 'ექიმი' : 'ექთანი'}</span>
+            <span className="text-xs text-slate-500 uppercase tracking-wider">{getRoleLabel(user?.role || "")}</span>
           </div>
           <button 
             onClick={onLogout}
@@ -295,9 +306,18 @@ export default function App() {
         ) : (
           <>
             <Route path="/" element={<Layout user={user} onLogout={handleLogout}><Dashboard /></Layout>} />
+            <Route path="/patients" element={<Layout user={user} onLogout={handleLogout}><Dashboard /></Layout>} />
             <Route path="/patients/:id" element={<Layout user={user} onLogout={handleLogout}><PatientProfile /></Layout>} />
             <Route path="/patients/:id/stationary" element={<Layout user={user} onLogout={handleLogout}><StationaryForm /></Layout>} />
             <Route path="/patients/new" element={<Layout user={user} onLogout={handleLogout}><NewPatient /></Layout>} />
+            <Route
+              path="/admin/users"
+              element={
+                user?.role === "admin"
+                  ? <Layout user={user} onLogout={handleLogout}><AdminUsers /></Layout>
+                  : <Navigate to="/" replace />
+              }
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         )}

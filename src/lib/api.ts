@@ -20,9 +20,14 @@ const STATIC_USERS = [
     name: "ადმინისტრატორი",
   },
 ];
+const MANAGED_USER_ROLES = new Set(["doctor", "nurse", "junior_doctor"]);
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function normalizeUsername(value: unknown) {
+  return String(value || "").trim().toLowerCase();
 }
 
 function parseCsvRows(csv: string) {
@@ -352,6 +357,43 @@ async function ensureDataSession() {
   return user;
 }
 
+function ensureAdminUser(user: any) {
+  if (user?.role !== "admin") {
+    const error = new Error("FORBIDDEN");
+    (error as any).status = 403;
+    throw error;
+  }
+}
+
+function sanitizeUserRecord(user: Record<string, any>) {
+  return {
+    id: String(user.id || ""),
+    username: String(user.username || ""),
+    role: String(user.role || ""),
+    name: String(user.name || ""),
+    createdAt: user.createdAt || "",
+    updatedAt: user.updatedAt || "",
+    isStatic: Boolean(user.isStatic),
+  };
+}
+
+function getStaticUsers() {
+  return STATIC_USERS.map((user) => ({
+    ...user,
+    isStatic: true,
+    createdAt: "",
+    updatedAt: "",
+  }));
+}
+
+function sortUsers<T extends Record<string, any>>(users: T[]) {
+  return [...users].sort((left, right) => {
+    if (left.role === "admin" && right.role !== "admin") return -1;
+    if (left.role !== "admin" && right.role === "admin") return 1;
+    return String(left.name || left.username || "").localeCompare(String(right.name || right.username || ""), "ka");
+  });
+}
+
 function toResponse(data: any) {
   return { data };
 }
@@ -368,6 +410,11 @@ async function readAllPrescriptions() {
 
 async function readAllTemplates() {
   const snapshot = await getDocs(collection(firebaseDb, "templates"));
+  return snapshot.docs.map((item) => normalizeRecord(item.data())!);
+}
+
+async function readAllUsers() {
+  const snapshot = await getDocs(collection(firebaseDb, "users"));
   return snapshot.docs.map((item) => normalizeRecord(item.data())!);
 }
 
@@ -414,6 +461,18 @@ async function fetchRegistryPatient(historyNumber: string) {
 
 const api = {
   async get(path: string) {
+    if (path === "/users") {
+      const user = await ensureDataSession();
+      ensureAdminUser(user);
+      const storedUsers = await readAllUsers();
+      return toResponse(
+        sortUsers([
+          ...getStaticUsers().map(sanitizeUserRecord),
+          ...storedUsers.map(sanitizeUserRecord),
+        ])
+      );
+    }
+
     if (path === "/patients") {
       await ensureDataSession();
       const patients = await readAllPatients();
@@ -487,9 +546,13 @@ const api = {
   async post(path: string, body: any) {
     if (path === "/auth/login") {
       await ensureAnonymousFirebaseSession();
-      const foundUser = STATIC_USERS.find(
-        (item) => item.username === String(body?.username || "").trim() &&
-          item.password === String(body?.password || "")
+      const username = normalizeUsername(body?.username);
+      const password = String(body?.password || "");
+      const storedUsers = await readAllUsers();
+      const foundUser = [...getStaticUsers(), ...storedUsers].find(
+        (item) =>
+          normalizeUsername(item.username) === username &&
+          String(item.password || "") === password
       );
 
       if (!foundUser) {
@@ -504,13 +567,39 @@ const api = {
 
       return toResponse({
         token,
-        user: {
-          id: foundUser.id,
-          username: foundUser.username,
-          role: foundUser.role,
-          name: foundUser.name,
-        },
+        user: sanitizeUserRecord(foundUser),
       });
+    }
+
+    if (path === "/users") {
+      const user = await ensureDataSession();
+      ensureAdminUser(user);
+
+      const username = normalizeUsername(body?.username);
+      const password = String(body?.password || "");
+      const name = String(body?.name || "").trim();
+      const role = String(body?.role || "").trim();
+      const existingUsers = [...getStaticUsers(), ...(await readAllUsers())];
+      const duplicate = existingUsers.some((item) => normalizeUsername(item.username) === username);
+
+      if (!username || !password || !name || !MANAGED_USER_ROLES.has(role) || duplicate) {
+        throw new Error("Invalid user data");
+      }
+
+      const ref = doc(collection(firebaseDb, "users"));
+      const createdAt = nowIso();
+      const nextUser = {
+        id: ref.id,
+        username,
+        password,
+        role,
+        name,
+        createdAt,
+        updatedAt: createdAt,
+      };
+
+      await setDoc(ref, nextUser);
+      return toResponse(sanitizeUserRecord(nextUser));
     }
 
     if (path === "/patients") {
@@ -588,6 +677,56 @@ const api = {
   },
 
   async put(path: string, body: any) {
+    if (path.startsWith("/users/")) {
+      const user = await ensureDataSession();
+      ensureAdminUser(user);
+
+      const userId = path.slice("/users/".length);
+      if (STATIC_USERS.some((item) => item.id === userId)) {
+        throw new Error("Default admin cannot be modified");
+      }
+
+      const ref = doc(firebaseDb, "users", userId);
+      const current = await getDoc(ref);
+      if (!current.exists()) {
+        throw new Error("User not found");
+      }
+
+      const currentValue = normalizeRecord(current.data())!;
+      const nextUsername = Object.prototype.hasOwnProperty.call(body || {}, "username")
+        ? normalizeUsername(body?.username)
+        : normalizeUsername(currentValue.username);
+      const nextRole = Object.prototype.hasOwnProperty.call(body || {}, "role")
+        ? String(body?.role || "").trim()
+        : String(currentValue.role || "");
+      const nextName = Object.prototype.hasOwnProperty.call(body || {}, "name")
+        ? String(body?.name || "").trim()
+        : String(currentValue.name || "");
+      const nextPassword = Object.prototype.hasOwnProperty.call(body || {}, "password")
+        ? String(body?.password || "")
+        : String(currentValue.password || "");
+
+      const duplicate = [...getStaticUsers(), ...(await readAllUsers())].some(
+        (item) => item.id !== userId && normalizeUsername(item.username) === nextUsername
+      );
+
+      if (!nextUsername || !nextName || !nextPassword || !MANAGED_USER_ROLES.has(nextRole) || duplicate) {
+        throw new Error("Invalid user data");
+      }
+
+      const nextValue = {
+        ...currentValue,
+        username: nextUsername,
+        role: nextRole,
+        name: nextName,
+        password: nextPassword,
+        updatedAt: nowIso(),
+      };
+
+      await setDoc(ref, nextValue);
+      return toResponse(sanitizeUserRecord(nextValue));
+    }
+
     if (path.startsWith("/prescriptions/")) {
       await ensureDataSession();
       const prescriptionId = path.slice("/prescriptions/".length);
@@ -620,6 +759,22 @@ const api = {
   },
 
   async delete(path: string) {
+    if (path.startsWith("/users/")) {
+      const user = await ensureDataSession();
+      ensureAdminUser(user);
+
+      const userId = path.slice("/users/".length);
+      if (STATIC_USERS.some((item) => item.id === userId)) {
+        throw new Error("Default admin cannot be deleted");
+      }
+      if (String(user.id || "") === userId) {
+        throw new Error("You cannot delete the active user");
+      }
+
+      await deleteDoc(doc(firebaseDb, "users", userId));
+      return toResponse({ ok: true });
+    }
+
     if (path.startsWith("/patients/")) {
       await ensureDataSession();
       const patientId = path.slice("/patients/".length);
