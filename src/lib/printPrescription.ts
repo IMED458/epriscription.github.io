@@ -54,8 +54,8 @@ export function printPrescription({
 
   const DATE_COLS = 7;
   const SUB_ROWS = 4;
-  const MAX_BLOCKS_PER_PAGE = 10;
-  const ROW_HEIGHT = 15;
+  const MAX_BLOCKS_PER_PAGE = 8;
+  const ROW_HEIGHT = 18;
   const BLOCK_HEIGHT = ROW_HEIGHT * SUB_ROWS;
   const normalizedItems = (items.length > 0
     ? items
@@ -65,20 +65,18 @@ export function printPrescription({
       time: String(item.time || ""),
       dates: Array.from({ length: DATE_COLS }).map((_, dateIndex) => String(item.dates?.[dateIndex] || "")),
     }));
-  const headerDates = Array.from({ length: DATE_COLS }).map((_, dateIndex) => {
-    const firstFilledDate = normalizedItems
-      .map((item) => String(item.dates?.[dateIndex] || "").trim())
-      .find(Boolean);
-    return escapeHtml(firstFilledDate || "");
-  });
-
-  function buildTableBody(pageItems: PrintableItem[]) {
+  function buildTableBody(pageItems: PrintableItem[], pageStartIndex: number) {
     let html = "";
 
-    for (const item of pageItems) {
+    for (const [itemIndex, item] of pageItems.entries()) {
       const blockNum = Number(item.index || 0) || 0;
       const text = escapeHtml(item.text || "");
       const time = escapeHtml(item.time || "");
+      const shouldRenderDates = pageStartIndex === 0 && itemIndex === 0;
+      const dates = Array.from({ length: DATE_COLS }).map((_, dateIndex) =>
+        escapeHtml(shouldRenderDates ? item.dates?.[dateIndex] || "" : "")
+      );
+
       for (let subRow = 0; subRow < SUB_ROWS; subRow += 1) {
         const isFirst = subRow === 0;
         const isLast = subRow === SUB_ROWS - 1;
@@ -147,7 +145,7 @@ export function printPrescription({
             align-items:center;
             justify-content:center;
             text-align:center;
-          "></div></td>`;
+          ">${isFirst ? dates[dateIndex] : ""}</div></td>`;
         }
 
         html += "</tr>";
@@ -157,7 +155,7 @@ export function printPrescription({
     return html;
   }
 
-  function tableHTML(pageItems: PrintableItem[]) {
+  function tableHTML(pageItems: PrintableItem[], pageStartIndex: number) {
     return `
     <table style="width:100%;border-collapse:collapse;table-layout:fixed;font-family:inherit;">
       <colgroup>
@@ -202,12 +200,12 @@ export function printPrescription({
         </tr>
         <tr>
           ${Array.from({ length: DATE_COLS })
-            .map((_, dateIndex) => `<td style="border:1px solid #000;height:12px;padding:0;font-size:8pt;text-align:center;vertical-align:middle;">${headerDates[dateIndex]}</td>`)
+            .map(() => `<td style="border:1px solid #000;height:14px;padding:0;"></td>`)
             .join("")}
         </tr>
       </thead>
       <tbody>
-        ${buildTableBody(pageItems)}
+        ${buildTableBody(pageItems, pageStartIndex)}
       </tbody>
     </table>`;
   }
@@ -233,7 +231,7 @@ export function printPrescription({
   if (pages.length === 0) pages.push(normalizedItems);
 
   const pageSections = pages.map((pageItems, pageIndex) => {
-    const pageTable = tableHTML(pageItems);
+    const pageTable = tableHTML(pageItems, pageIndex * MAX_BLOCKS_PER_PAGE);
 
     if (pageIndex === 0) {
       return `
