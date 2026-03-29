@@ -430,6 +430,7 @@ const api = {
         birthDate: body?.birthDate || "",
         gender: body?.gender || "",
         phone: body?.phone || "",
+        room: String(body?.room || "").trim(),
         address: body?.address || "",
         createdAt: nowIso(),
         updatedAt: nowIso(),

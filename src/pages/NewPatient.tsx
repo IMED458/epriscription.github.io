@@ -17,6 +17,7 @@ export default function NewPatient() {
     birthDate: "",
     gender: "male",
     phone: "",
+    room: "",
     address: ""
   });
   const lookupSeqRef = useRef(0);
@@ -59,6 +60,7 @@ export default function NewPatient() {
           birthDate: res.data.birthDate || "",
           gender: normalizeGender(res.data.gender, prev.gender as "male" | "female"),
           phone: res.data.phone || "",
+          room: prev.room,
           address: res.data.address || "",
         }));
         setLookupState("success");
@@ -186,6 +188,15 @@ export default function NewPatient() {
               className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
               value={formData.phone}
               onChange={(e) => setFormData({...formData, phone: e.target.value})}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">პალატა №</label>
+            <input
+              type="text"
+              className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
+              value={formData.room}
+              onChange={(e) => setFormData({...formData, room: e.target.value})}
             />
           </div>
           <div className="md:col-span-2">

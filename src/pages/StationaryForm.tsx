@@ -66,6 +66,11 @@ export default function StationaryForm() {
         const prescriptionRes = await api.get(`/prescriptions/${prescriptionId}`);
         const parsed = JSON.parse(prescriptionRes.data.data || "{}");
         setFormData(normalizeFormData(parsed));
+      } else {
+        setFormData((prev) => ({
+          ...prev,
+          room: String(patientRes.data?.room || prev.room || ""),
+        }));
       }
     } catch (err) {
       toast.error("ფორმის ჩატვირთვა ვერ მოხერხდა");

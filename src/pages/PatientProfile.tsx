@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ChevronLeft, Plus, FileText, ExternalLink, History, User as UserIcon, Calendar, Phone, MapPin, Fingerprint, Printer, Trash2 } from "lucide-react";
+import { ChevronLeft, Plus, FileText, ExternalLink, History, User as UserIcon, Calendar, Phone, MapPin, Fingerprint, Printer, Trash2, Building2 } from "lucide-react";
 import api from "../lib/api";
 import { toast } from "sonner";
 
@@ -139,6 +139,15 @@ export default function PatientProfile() {
                   <div>
                     <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">ტელეფონი</p>
                     <p className="font-medium">{patient.phone || '-'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 text-slate-600">
+                  <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+                    <Building2 size={18} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">პალატა №</p>
+                    <p className="font-medium">{patient.room || '-'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 text-slate-600">
