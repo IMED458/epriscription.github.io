@@ -19,6 +19,14 @@ const STORAGE_SCOPE = patientId || "default";
 const LIVE_SYNC_STORAGE_KEY = `stationary24_live_sync_${STORAGE_SCOPE}`;
 const NURSE_STORAGE_KEY = `stationary24_nurse_sync_${STORAGE_SCOPE}`;
 const TEMPLATE_TYPE = "stationary24_nurse";
+const EXCLUDED_MEDICATION_NAMES = new Set([
+  "ანტიბაქტერიული თერაპია",
+  "სედაცია",
+  "ბაზისური თერაპია",
+  "ვაზოპრესორი",
+  "insulini",
+  "შაქრის კონტროლი",
+]);
 
 const NURSE_ROW_COUNT = 24;
 const NURSE_LEFT_ITEMS = [
@@ -125,8 +133,42 @@ function renderNurseTables() {
   buildNurseExpenseTable("nurseExpense2", NURSE_LEFT_ITEMS, NURSE_RIGHT_ITEMS);
 }
 
-function extractMedicationName(raw) {
+function normalizeMedicationText(raw) {
   return String(raw || "").replace(/\s+/g, " ").trim();
+}
+
+function formatNaClMedication(text) {
+  if (!/\bnacl\b/i.test(text)) return "";
+  const volumeMatch = text.match(/\b(1000|500|250|200)\s*(?:ml|მლ)?\b/i);
+  if (!volumeMatch) return "";
+
+  const baseMatch = text.match(/^(sol\.?\s+)?nacl(?:\s*0[.,]9%?)?/i);
+  if (!baseMatch) return `NaCl ${volumeMatch[1]}`;
+
+  const base = normalizeMedicationText(baseMatch[0]).replace(/^sol\.?/i, "Sol.").trim();
+  return `${base} ${volumeMatch[1]}`;
+}
+
+function extractMedicationName(raw) {
+  const text = normalizeMedicationText(raw);
+  if (!text) return "";
+
+  const excludedNormalized = text.toLowerCase().replace(/\s+/g, " ").trim();
+  for (const ex of EXCLUDED_MEDICATION_NAMES) {
+    if (excludedNormalized === ex.toLowerCase()) return "";
+  }
+
+  const naclFormatted = formatNaClMedication(text);
+  if (naclFormatted) return naclFormatted;
+
+  const match = text.match(/^(sol\.?)\s+([^\s,;()]+)/i);
+  if (match) {
+    const sol = match[1].toLowerCase().startsWith("sol") ? "Sol." : match[1];
+    const drug = match[2].replace(/[.;,:]+$/g, "");
+    return `${sol} ${drug}.`;
+  }
+
+  return text.split(" ").slice(0, 2).join(" ");
 }
 
 function readObservationSync() {
