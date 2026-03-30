@@ -10,6 +10,8 @@ import StationaryForm from "./pages/StationaryForm";
 import NewPatient from "./pages/NewPatient";
 import AdminUsers from "./pages/AdminUsers";
 
+const APP_LOGO_SRC = "/assets/clinic-logo.png";
+
 const getRoleLabel = (role: string) => {
   if (role === "admin") return "ადმინისტრატორი";
   if (role === "doctor") return "ექიმი";
@@ -24,10 +26,12 @@ const Layout = ({ children, user, onLogout }: { children: React.ReactNode, user:
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-4">
-          <Link to="/" className="text-2xl font-bold text-blue-700 flex items-center gap-2">
-            <div className="w-10 h-10 bg-blue-700 rounded-lg flex items-center justify-center text-white">
-              <Plus size={24} />
-            </div>
+          <Link to="/" className="text-2xl font-bold text-blue-700 flex items-center gap-3">
+            <img
+              src={APP_LOGO_SRC}
+              alt="კლინიკის ლოგო"
+              className="h-11 w-11 shrink-0 object-contain"
+            />
             <span>კლინიკა</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6 ml-10">
@@ -87,9 +91,11 @@ const Login = ({ onLogin }: { onLogin: (token: string, user: any) => void }) => 
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-200">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-700 rounded-2xl flex items-center justify-center text-white mx-auto mb-4 shadow-lg">
-            <Plus size={32} />
-          </div>
+          <img
+            src={APP_LOGO_SRC}
+            alt="კლინიკის ლოგო"
+            className="mx-auto mb-4 h-20 w-20 object-contain drop-shadow-sm"
+          />
           <h1 className="text-2xl font-bold text-slate-900">სისტემაში შესვლა</h1>
           <p className="text-slate-500 mt-2">გთხოვთ გაიაროთ ავტორიზაცია</p>
         </div>
