@@ -7,15 +7,12 @@ import { createServer as createViteServer } from "vite";
 import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import axios from "axios";
+import { fetchRegistryPatientFromWorkbook } from "./src/lib/patient-registry";
 
 let prisma = new PrismaClient();
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const JWT_SECRET = process.env.JWT_SECRET || "clinic-secret-key";
-const PATIENT_REGISTRY_CSV_URL =
-  process.env.PATIENT_REGISTRY_CSV_URL ||
-  "https://docs.google.com/spreadsheets/d/1zsuLPC1hDVJ1pzGMsk_LY1bILCF6Dbd7/export?format=csv&gid=226530235";
 const SQLITE_DB_PATH = path.resolve(process.cwd(), "prisma", "dev.db");
 
 app.use(cors());
@@ -51,28 +48,14 @@ app.post("/api/auth/login", async (req, res) => {
 app.get("/api/patients/search-registry/:historyNumber", async (req, res) => {
   const { historyNumber } = req.params;
   try {
-    const response = await axios.get(PATIENT_REGISTRY_CSV_URL, { timeout: 10000 });
-    const rows = response.data.split("\n").map((row: string) => row.split(","));
-
-    const dataRows = rows.slice(1);
-    const foundRow = dataRows.find((row: string[]) => row[0]?.trim() === historyNumber);
-
-    if (foundRow) {
-      res.json({
-        historyNumber: foundRow[0]?.trim(),
-        firstName: foundRow[1]?.trim(),
-        lastName: foundRow[2]?.trim(),
-        personalId: foundRow[3]?.trim(),
-        birthDate: foundRow[4]?.trim(),
-        gender: foundRow[5]?.trim(),
-        phone: foundRow[6]?.trim(),
-        address: foundRow[7]?.trim(),
-      });
-    } else {
-      res.status(404).json({ error: "Patient not found in registry" });
-    }
+    res.json(await fetchRegistryPatientFromWorkbook(historyNumber));
   } catch (err) {
     console.error("Registry fetch error:", err);
+    const status = Number((err as any)?.status || 500);
+    if (status === 404) {
+      res.status(404).json({ error: "Patient not found in registry" });
+      return;
+    }
     res.status(500).json({ error: "Failed to fetch from registry" });
   }
 });

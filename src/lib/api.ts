@@ -8,6 +8,7 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { ensureAnonymousFirebaseSession, firebaseAuth, firebaseDb } from "./firebase";
+import { fetchRegistryPatientFromWorkbook } from "./patient-registry";
 
 const PATIENT_REGISTRY_SPREADSHEET_ID = "1zsuLPC1hDVJ1pzGMsk_LY1bILCF6Dbd7";
 const PATIENT_REGISTRY_GIDS = ["226530235", "761247166", "991199225"];
@@ -431,44 +432,7 @@ async function readAllUsers() {
 }
 
 async function fetchRegistryPatient(historyNumber: string) {
-  const rows = await loadRegistryRows();
-  const headers = rows[0] || [];
-  const dataRows = rows.slice(1);
-  const historyIndex = findHeaderIndex(headers, ["ისტn", "ისტორია", "ისტორიანომერი"], 5);
-  const firstNameIndex = findHeaderIndex(headers, ["სახელი"], 2);
-  const lastNameIndex = findHeaderIndex(headers, ["გვარი"], 1);
-  const personalIdIndex = findHeaderIndex(headers, ["პირადინ", "პირადინომერი"], 3);
-  const birthDateIndex = findHeaderIndex(headers, ["დაბადებისთარიღი", "დაბადება"], -1);
-  const genderIndex = findHeaderIndex(headers, ["სქესი"], -1);
-  const phoneIndex = findHeaderIndex(headers, ["ტელეფონი", "მობილური"], -1);
-  const addressIndex = findHeaderIndex(headers, ["მისამართი"], -1);
-  const diagnosisIndex = findHeaderIndex(headers, ["დიაგნოზი"], 7);
-  const departmentIndex = findHeaderIndex(headers, ["განყოფილება"], 8);
-  const ageIndex = findHeaderIndex(headers, ["ასაკი"], 9);
-  const admissionDateIndex = findHeaderIndex(headers, ["თარიღი"], 6);
-
-  const foundRow = dataRows.find((row) => matchesLookupValue(safeCell(row, historyIndex), historyNumber));
-
-  if (!foundRow) {
-    const error = new Error("Patient not found in registry");
-    (error as any).status = 404;
-    throw error;
-  }
-
-  return {
-    historyNumber: safeCell(foundRow, historyIndex),
-    firstName: safeCell(foundRow, firstNameIndex),
-    lastName: safeCell(foundRow, lastNameIndex),
-    personalId: safeCell(foundRow, personalIdIndex),
-    birthDate: safeCell(foundRow, birthDateIndex),
-    gender: safeCell(foundRow, genderIndex),
-    phone: safeCell(foundRow, phoneIndex),
-    address: safeCell(foundRow, addressIndex),
-    diagnosis: safeCell(foundRow, diagnosisIndex),
-    department: safeCell(foundRow, departmentIndex),
-    age: safeCell(foundRow, ageIndex),
-    admissionDate: safeCell(foundRow, admissionDateIndex),
-  };
+  return fetchRegistryPatientFromWorkbook(historyNumber);
 }
 
 const api = {
