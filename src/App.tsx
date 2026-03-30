@@ -27,13 +27,16 @@ const Layout = ({ children, user, onLogout }: { children: React.ReactNode, user:
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-4">
-          <Link to="/" className="text-2xl font-bold text-blue-700 flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3 text-blue-700">
             <img
               src={APP_LOGO_SRC}
               alt="კლინიკის ლოგო"
               className="h-11 w-11 shrink-0 object-contain"
             />
-            <span>კლინიკა</span>
+            <div className="flex flex-col leading-none">
+              <span className="mb-1 text-[11px] font-semibold tracking-[0.18em] text-blue-500">ინგოროყვას</span>
+              <span className="text-2xl font-bold text-blue-700">კლინიკა</span>
+            </div>
           </Link>
           <nav className="hidden md:flex items-center gap-6 ml-10">
             <Link to="/" className="text-slate-600 hover:text-blue-700 font-medium transition-colors">მთავარი</Link>
