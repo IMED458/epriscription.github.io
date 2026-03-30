@@ -16,6 +16,7 @@ const query = getQueryParams();
 const patientId = query.get("patientId") || "";
 const normalizedPatientId = /^\d+$/.test(patientId) ? Number(patientId) : patientId;
 let currentPrescriptionId = query.get("prescriptionId") || "";
+const autoPrint = query.get("autoPrint") === "1";
 const isFresh = query.get("fresh") === "1";
 const STORAGE_SCOPE = patientId || "default";
 const LIVE_SYNC_STORAGE_KEY = `stationary24_live_sync_${STORAGE_SCOPE}`;
@@ -551,6 +552,9 @@ async function initialize() {
     renderSignatureSlots();
     writeLiveSync();
     updateStatus("online", "ფორმა მზადაა - შენახვა და ბეჭდვა მუშაობს");
+    if (autoPrint) {
+      window.setTimeout(() => window.print(), 220);
+    }
   } catch (error) {
     updateStatus("offline", "ზოგი მონაცემი ვერ ჩაიტვირთა, მაგრამ ლოკალური შევსება მუშაობს");
     console.error(error);

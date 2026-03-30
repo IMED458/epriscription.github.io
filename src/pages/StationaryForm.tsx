@@ -10,8 +10,10 @@ export default function StationaryForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const printRef = useRef<HTMLDivElement>(null);
+  const autoPrintTriggeredRef = useRef(false);
   const params = new URLSearchParams(location.search);
   const prescriptionId = params.get("prescriptionId");
+  const autoPrint = params.get("autoPrint") === "1";
 
   const getCurrentAppUser = () => {
     if (typeof window === "undefined") return null;
@@ -158,6 +160,15 @@ export default function StationaryForm() {
       return next;
     });
   }, [staffUsers]);
+
+  useEffect(() => {
+    if (!autoPrint || loading || !patient || autoPrintTriggeredRef.current) return;
+    autoPrintTriggeredRef.current = true;
+    const timer = window.setTimeout(() => {
+      handlePrint();
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [autoPrint, loading, patient]);
 
   const normalizeFormData = (data: any, availableStaff = staffUsers) =>
     normalizeDoctorFields({

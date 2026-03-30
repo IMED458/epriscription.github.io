@@ -296,6 +296,7 @@
     const query = getQueryParams();
     const patientId = query.get("patientId") || "";
     const normalizedPatientId = /^\d+$/.test(patientId) ? Number(patientId) : patientId;
+    const autoPrint = query.get("autoPrint") === "1";
 
     function getStoredUser() {
       try {
@@ -767,6 +768,9 @@
       await hydratePrescription();
       if (!document.getElementById("patient-name").value.trim()) {
         scheduleHistoryLookup(true);
+      }
+      if (autoPrint) {
+        setTimeout(handlePrint, 220);
       }
     });
   </script>

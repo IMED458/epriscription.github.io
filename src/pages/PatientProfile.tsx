@@ -20,6 +20,13 @@ export default function PatientProfile() {
     return `${appBase}/forms/${formType}/index.html?${search.toString()}`;
   };
 
+  const buildStationaryUrl = (params: Record<string, string>) => {
+    const search = new URLSearchParams(params);
+    const nextUrl = new URL(window.location.href);
+    nextUrl.hash = `/patients/${id}/stationary?${search.toString()}`;
+    return nextUrl.toString();
+  };
+
   useEffect(() => {
     fetchPatient();
   }, [id]);
@@ -47,6 +54,37 @@ export default function PatientProfile() {
       patientId: String(id || ""),
       prescriptionId: String(prescription.id),
     });
+  };
+
+  const openPrescriptionPrint = (prescription: any) => {
+    if (prescription.type === "stationary") {
+      const popup = window.open(
+        buildStationaryUrl({
+          prescriptionId: String(prescription.id),
+          autoPrint: "1",
+        }),
+        "_blank",
+        "noopener"
+      );
+      if (!popup) {
+        toast.error("ბეჭდვის ფანჯარა ვერ გაიხსნა");
+      }
+      return;
+    }
+
+    const formType = prescription.type === "stationary24" ? "stationary24" : "home";
+    const popup = window.open(
+      buildFormUrl(formType, {
+        patientId: String(id || ""),
+        prescriptionId: String(prescription.id),
+        autoPrint: "1",
+      }),
+      "_blank",
+      "noopener"
+    );
+    if (!popup) {
+      toast.error("ბეჭდვის ფანჯარა ვერ გაიხსნა");
+    }
   };
 
   const deletePrescription = async (prescriptionId: number) => {
@@ -287,7 +325,7 @@ export default function PatientProfile() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                        <button onClick={(e) => { e.stopPropagation(); openPrescription(pres); }} className="p-2 text-slate-400 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all">
+                        <button onClick={(e) => { e.stopPropagation(); openPrescriptionPrint(pres); }} className="p-2 text-slate-400 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all">
                           <Printer size={18} />
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); deletePrescription(pres.id); }} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
