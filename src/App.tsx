@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, Navigate, useNavigate, Link } from "react-ro
 import { Toaster, toast } from "sonner";
 import { LogOut, User as UserIcon, Search, Plus, FileText, Printer, Save, Trash2, ChevronLeft, LayoutDashboard, Settings } from "lucide-react";
 import api from "./lib/api";
+import clinicLogo from "./assets/clinic-logo.png";
 
 import PatientProfile from "./pages/PatientProfile";
 import StationaryForm from "./pages/StationaryForm";
@@ -10,7 +11,7 @@ import StationaryForm from "./pages/StationaryForm";
 import NewPatient from "./pages/NewPatient";
 import AdminUsers from "./pages/AdminUsers";
 
-const APP_LOGO_SRC = "/assets/clinic-logo.png";
+const APP_LOGO_SRC = clinicLogo;
 
 const getRoleLabel = (role: string) => {
   if (role === "admin") return "ადმინისტრატორი";
