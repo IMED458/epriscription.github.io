@@ -54,6 +54,9 @@ const patientSaveBtn = document.getElementById("patientSaveBtn");
 let templates = [];
 let historyLookupTimer = null;
 let patientSaveFeedbackTimer = null;
+let isSelecting = false;
+let selectedInputs = new Set();
+let lastFocusedInput = null;
 
 function updateStatus(mode, message) {
   statusEl.textContent = message;
@@ -222,6 +225,8 @@ function applyFormData(data = {}) {
       inp.value = data.other?.[i]?.values?.[j] || "";
     });
   });
+
+  attachSelectionHandlers();
 }
 
 function getSignatureSelection() {
@@ -446,6 +451,182 @@ function scheduleHistoryLookup() {
   historyLookupTimer = setTimeout(lookupPatientByHistory, 320);
 }
 
+function syncAfterInteractiveEdit() {
+  updatePatientNameBanner();
+  writeLiveSync();
+  if (document.getElementById("hist").value.trim()) {
+    scheduleHistoryLookup();
+  }
+}
+
+function clearSelection() {
+  selectedInputs.forEach((input) => input.classList.remove("selected-cell"));
+  selectedInputs.clear();
+}
+
+function addToSelection(input) {
+  selectedInputs.add(input);
+  input.classList.add("selected-cell");
+}
+
+function removeFromSelection(input) {
+  selectedInputs.delete(input);
+  input.classList.remove("selected-cell");
+}
+
+function toggleSelection(input) {
+  if (selectedInputs.has(input)) {
+    removeFromSelection(input);
+  } else {
+    addToSelection(input);
+  }
+}
+
+function getCellPosition(input) {
+  const cell = input.closest("td,th");
+  const row = cell?.parentElement;
+  const table = row?.closest("table");
+  if (!cell || !row || !table) return null;
+  const rows = Array.from(table.rows);
+  const rowIndex = rows.indexOf(row);
+  const cells = Array.from(row.cells);
+  const cellIndex = cells.indexOf(cell);
+  return { table, rowIndex, cellIndex };
+}
+
+function selectRange(fromInput, toInput) {
+  const fromPos = getCellPosition(fromInput);
+  const toPos = getCellPosition(toInput);
+  if (!fromPos || !toPos || fromPos.table !== toPos.table) return;
+
+  const rows = Array.from(fromPos.table.rows);
+  const minRow = Math.min(fromPos.rowIndex, toPos.rowIndex);
+  const maxRow = Math.max(fromPos.rowIndex, toPos.rowIndex);
+  const minCol = Math.min(fromPos.cellIndex, toPos.cellIndex);
+  const maxCol = Math.max(fromPos.cellIndex, toPos.cellIndex);
+
+  clearSelection();
+  for (let rowIndex = minRow; rowIndex <= maxRow; rowIndex += 1) {
+    const row = rows[rowIndex];
+    for (let cellIndex = minCol; cellIndex <= maxCol; cellIndex += 1) {
+      const cell = row.cells[cellIndex];
+      if (!cell) continue;
+      const input = cell.querySelector("input");
+      if (input) addToSelection(input);
+    }
+  }
+}
+
+function startSelection(event) {
+  if (event.button !== 0) return;
+
+  if (event.ctrlKey || event.metaKey) {
+    toggleSelection(this);
+    return;
+  }
+
+  if (event.shiftKey && lastFocusedInput && lastFocusedInput.isConnected) {
+    selectRange(lastFocusedInput, this);
+    return;
+  }
+
+  clearSelection();
+  isSelecting = true;
+  addToSelection(this);
+}
+
+function mouseEnterDuringSelection() {
+  if (!isSelecting) return;
+  addToSelection(this);
+}
+
+function attachSelectionHandlers() {
+  document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"]').forEach((input) => {
+    if (input.dataset.selectionBound === "1") return;
+    input.addEventListener("mousedown", startSelection);
+    input.addEventListener("mouseenter", mouseEnterDuringSelection);
+    input.addEventListener("focus", () => {
+      lastFocusedInput = input;
+    });
+    input.dataset.selectionBound = "1";
+  });
+}
+
+function copySelectedToClipboard() {
+  if (selectedInputs.size === 0) return;
+  const inputs = Array.from(selectedInputs).filter((input) => input.isConnected);
+  if (!inputs.length) return;
+
+  const firstPos = getCellPosition(inputs[0]);
+  if (!firstPos) return;
+
+  const positions = inputs
+    .map((input) => {
+      const pos = getCellPosition(input);
+      return pos && pos.table === firstPos.table ? { input, ...pos } : null;
+    })
+    .filter(Boolean);
+
+  if (!positions.length) return;
+
+  const minRow = Math.min(...positions.map((pos) => pos.rowIndex));
+  const maxRow = Math.max(...positions.map((pos) => pos.rowIndex));
+  const minCol = Math.min(...positions.map((pos) => pos.cellIndex));
+  const maxCol = Math.max(...positions.map((pos) => pos.cellIndex));
+
+  const rowsOut = [];
+  for (let rowIndex = minRow; rowIndex <= maxRow; rowIndex += 1) {
+    const colsOut = [];
+    for (let cellIndex = minCol; cellIndex <= maxCol; cellIndex += 1) {
+      const match = positions.find((pos) => pos.rowIndex === rowIndex && pos.cellIndex === cellIndex);
+      colsOut.push(match ? match.input.value : "");
+    }
+    rowsOut.push(colsOut.join("\t"));
+  }
+  const text = rowsOut.join("\n");
+
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).catch(() => {});
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+}
+
+function pasteTextGrid(text, startInput) {
+  const pos = getCellPosition(startInput);
+  if (!pos) {
+    startInput.value = text;
+    syncAfterInteractiveEdit();
+    return;
+  }
+
+  const { table, rowIndex, cellIndex } = pos;
+  const tableRows = Array.from(table.rows);
+  const lines = text.replace(/\r/g, "").split("\n");
+
+  for (let rowOffset = 0; rowOffset < lines.length; rowOffset += 1) {
+    const cols = lines[rowOffset].split("\t");
+    const targetRowIndex = rowIndex + rowOffset;
+    if (targetRowIndex >= tableRows.length) break;
+    const row = tableRows[targetRowIndex];
+    for (let colOffset = 0; colOffset < cols.length; colOffset += 1) {
+      const targetCellIndex = cellIndex + colOffset;
+      if (targetCellIndex >= row.cells.length) break;
+      const cell = row.cells[targetCellIndex];
+      const input = cell.querySelector("input");
+      if (input) input.value = cols[colOffset];
+    }
+  }
+
+  syncAfterInteractiveEdit();
+}
+
 function clearAll() {
   if (!window.confirm("გსურთ ყველაფრის გასუფთავება?")) return;
   document.querySelectorAll("input[type=text], input[type=number]").forEach((el) => {
@@ -454,7 +635,9 @@ function clearAll() {
   document.querySelectorAll("select").forEach((el) => {
     el.selectedIndex = 0;
   });
+  clearSelection();
   buildTables();
+  attachSelectionHandlers();
   document.getElementById("today").value = todayDisplay();
   renderSignatureSlots();
   updatePatientNameBanner();
@@ -495,6 +678,107 @@ function setupNavigation() {
   });
 }
 
+document.addEventListener("mouseup", () => {
+  isSelecting = false;
+});
+
+document.addEventListener("paste", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement) || !event.clipboardData) return;
+  const text = event.clipboardData.getData("text");
+  if (!text.includes("\n") && !text.includes("\t")) return;
+  event.preventDefault();
+  pasteTextGrid(text, target);
+});
+
+document.addEventListener("keydown", (event) => {
+  const target = event.target;
+  const isInput = target instanceof HTMLInputElement;
+
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c") {
+    if (selectedInputs.size > 0) {
+      event.preventDefault();
+      copySelectedToClipboard();
+    }
+    return;
+  }
+
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a" && isInput) {
+    const cell = target.closest("td,th");
+    const table = cell?.closest("table");
+    if (!table) return;
+    event.preventDefault();
+    clearSelection();
+    table.querySelectorAll('input[type="text"], input[type="number"], input[type="date"]').forEach((input) => {
+      addToSelection(input);
+    });
+    return;
+  }
+
+  if (event.key === "Delete" && selectedInputs.size > 0) {
+    event.preventDefault();
+    selectedInputs.forEach((input) => {
+      input.value = "";
+    });
+    syncAfterInteractiveEdit();
+    return;
+  }
+
+  if (!isInput) return;
+  if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter"].includes(event.key)) return;
+
+  const cell = target.closest("td,th");
+  const table = cell?.closest("table");
+  if (!cell || !table) return;
+
+  const inputsInTable = Array.from(
+    table.querySelectorAll('input[type="text"], input[type="number"], input[type="date"]'),
+  );
+  const currentIndex = inputsInTable.indexOf(target);
+
+  if (event.key === "ArrowRight") {
+    event.preventDefault();
+    if (currentIndex < inputsInTable.length - 1) {
+      inputsInTable[currentIndex + 1].focus();
+    }
+    return;
+  }
+
+  if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    if (currentIndex > 0) {
+      inputsInTable[currentIndex - 1].focus();
+    }
+    return;
+  }
+
+  const row = cell.parentElement;
+  const rows = Array.from(table.rows);
+  const rowIndex = rows.indexOf(row);
+  const cells = Array.from(row.cells);
+  const cellIndex = cells.indexOf(cell);
+
+  const moveVertical = (delta) => {
+    const targetRowIndex = rowIndex + delta;
+    if (targetRowIndex < 0 || targetRowIndex >= rows.length) return;
+    const targetRow = rows[targetRowIndex];
+    const targetCell = targetRow.cells[cellIndex] || targetRow.cells[targetRow.cells.length - 1];
+    const targetInput = targetCell?.querySelector("input");
+    if (targetInput) targetInput.focus();
+  };
+
+  if (event.key === "Enter" || event.key === "ArrowDown") {
+    event.preventDefault();
+    moveVertical(1);
+    return;
+  }
+
+  if (event.key === "ArrowUp") {
+    event.preventDefault();
+    moveVertical(-1);
+  }
+});
+
 function openNursePage() {
   const url = new URL("./nurse.html", window.location.href);
   url.searchParams.set("patientId", patientId);
@@ -514,6 +798,7 @@ async function initialize() {
   updateStatus("connecting", "მიმდინარეობს სისტემასთან დაკავშირება...");
   initializeFreshState();
   buildTables();
+  attachSelectionHandlers();
   initializeDateFields();
   setupNavigation();
   attachGlobalInputHandlers();

@@ -36,6 +36,13 @@ const NURSE_RIGHT_ITEMS = [
 const statusEl = document.getElementById("firebaseStatus");
 let templates = [];
 let lastSyncedMeds = [];
+let isSelecting = false;
+let selectedInputs = new Set();
+let lastFocusedInput = null;
+let undoStack = [];
+let redoStack = [];
+let historyTimer = null;
+let applyingHistoryState = false;
 
 function updateStatus(mode, message) {
   statusEl.textContent = message;
@@ -204,7 +211,9 @@ function applyNursePayload(data = {}) {
   Array.from(document.querySelectorAll("#nurseExpense2 .n-qty input")).forEach((el, i) => {
     el.value = data.qtyPage2?.[i] || "";
   });
+  attachSelectionHandlers();
   writeNursePayload();
+  pushHistorySnapshot(true);
 }
 
 async function hydratePatient() {
@@ -318,11 +327,238 @@ function closeTemplateModal() {
   document.getElementById("nurseTemplateModal").style.display = "none";
 }
 
+function getTrackedInputs() {
+  return Array.from(document.querySelectorAll('input[type="text"], input[type="date"]'));
+}
+
+function snapshotState() {
+  return getTrackedInputs().map((input) => input.value);
+}
+
+function applySnapshot(values) {
+  const inputs = getTrackedInputs();
+  applyingHistoryState = true;
+  inputs.forEach((input, index) => {
+    input.value = values[index] || "";
+  });
+  applyingHistoryState = false;
+  writeNursePayload();
+}
+
+function pushHistorySnapshot(force = false) {
+  if (applyingHistoryState) return;
+  const snapshot = snapshotState();
+  const last = undoStack[undoStack.length - 1];
+  if (!force && last && last.length === snapshot.length && last.every((value, index) => value === snapshot[index])) {
+    return;
+  }
+  undoStack.push(snapshot);
+  if (undoStack.length > 200) undoStack.shift();
+  redoStack = [];
+}
+
+function scheduleHistorySnapshot() {
+  if (historyTimer) clearTimeout(historyTimer);
+  historyTimer = setTimeout(() => pushHistorySnapshot(), 220);
+}
+
+function undoHistory() {
+  if (undoStack.length <= 1) return;
+  const current = undoStack.pop();
+  redoStack.push(current);
+  const previous = undoStack[undoStack.length - 1];
+  applySnapshot(previous);
+}
+
+function redoHistory() {
+  if (!redoStack.length) return;
+  const next = redoStack.pop();
+  undoStack.push(next);
+  applySnapshot(next);
+}
+
+function clearSelection() {
+  selectedInputs.forEach((input) => input.classList.remove("selected-cell"));
+  selectedInputs.clear();
+}
+
+function addToSelection(input) {
+  selectedInputs.add(input);
+  input.classList.add("selected-cell");
+}
+
+function removeFromSelection(input) {
+  selectedInputs.delete(input);
+  input.classList.remove("selected-cell");
+}
+
+function toggleSelection(input) {
+  if (selectedInputs.has(input)) {
+    removeFromSelection(input);
+  } else {
+    addToSelection(input);
+  }
+}
+
+function getCellPosition(input) {
+  const cell = input.closest("td,th");
+  const row = cell?.parentElement;
+  const table = row?.closest("table");
+  if (!cell || !row || !table) return null;
+  const rows = Array.from(table.rows);
+  const rowIndex = rows.indexOf(row);
+  const cells = Array.from(row.cells);
+  const cellIndex = cells.indexOf(cell);
+  return { table, rowIndex, cellIndex };
+}
+
+function selectRange(fromInput, toInput) {
+  const fromPos = getCellPosition(fromInput);
+  const toPos = getCellPosition(toInput);
+  if (!fromPos || !toPos || fromPos.table !== toPos.table) return;
+
+  const rows = Array.from(fromPos.table.rows);
+  const minRow = Math.min(fromPos.rowIndex, toPos.rowIndex);
+  const maxRow = Math.max(fromPos.rowIndex, toPos.rowIndex);
+  const minCol = Math.min(fromPos.cellIndex, toPos.cellIndex);
+  const maxCol = Math.max(fromPos.cellIndex, toPos.cellIndex);
+
+  clearSelection();
+  for (let rowIndex = minRow; rowIndex <= maxRow; rowIndex += 1) {
+    const row = rows[rowIndex];
+    for (let cellIndex = minCol; cellIndex <= maxCol; cellIndex += 1) {
+      const cell = row.cells[cellIndex];
+      if (!cell) continue;
+      const input = cell.querySelector("input");
+      if (input) addToSelection(input);
+    }
+  }
+}
+
+function startSelection(event) {
+  if (event.button !== 0) return;
+  if (event.ctrlKey || event.metaKey) {
+    toggleSelection(this);
+    return;
+  }
+  if (event.shiftKey && lastFocusedInput && lastFocusedInput.isConnected) {
+    selectRange(lastFocusedInput, this);
+    return;
+  }
+  clearSelection();
+  isSelecting = true;
+  addToSelection(this);
+}
+
+function mouseEnterDuringSelection() {
+  if (isSelecting) addToSelection(this);
+}
+
+function attachSelectionHandlers() {
+  document.querySelectorAll('input[type="text"], input[type="date"]').forEach((input) => {
+    if (input.dataset.selectionBound === "1") return;
+    input.addEventListener("mousedown", startSelection);
+    input.addEventListener("mouseenter", mouseEnterDuringSelection);
+    input.addEventListener("focus", () => {
+      lastFocusedInput = input;
+    });
+    input.dataset.selectionBound = "1";
+  });
+}
+
+function copySelectedToClipboard() {
+  if (!selectedInputs.size) return Promise.resolve("");
+  const inputs = Array.from(selectedInputs).filter((input) => input.isConnected);
+  if (!inputs.length) return Promise.resolve("");
+
+  const firstPos = getCellPosition(inputs[0]);
+  if (!firstPos) return Promise.resolve("");
+
+  const positions = inputs
+    .map((input) => {
+      const pos = getCellPosition(input);
+      return pos && pos.table === firstPos.table ? { input, ...pos } : null;
+    })
+    .filter(Boolean);
+
+  if (!positions.length) return Promise.resolve("");
+
+  const minRow = Math.min(...positions.map((pos) => pos.rowIndex));
+  const maxRow = Math.max(...positions.map((pos) => pos.rowIndex));
+  const minCol = Math.min(...positions.map((pos) => pos.cellIndex));
+  const maxCol = Math.max(...positions.map((pos) => pos.cellIndex));
+
+  const rowsOut = [];
+  for (let rowIndex = minRow; rowIndex <= maxRow; rowIndex += 1) {
+    const colsOut = [];
+    for (let cellIndex = minCol; cellIndex <= maxCol; cellIndex += 1) {
+      const match = positions.find((pos) => pos.rowIndex === rowIndex && pos.cellIndex === cellIndex);
+      colsOut.push(match ? match.input.value : "");
+    }
+    rowsOut.push(colsOut.join("\t"));
+  }
+  const text = rowsOut.join("\n");
+
+  if (navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(text).then(() => text).catch(() => text);
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+  return Promise.resolve(text);
+}
+
+function pasteTextGrid(text, startInput) {
+  const pos = getCellPosition(startInput);
+  if (!pos) {
+    startInput.value = text;
+    writeNursePayload();
+    pushHistorySnapshot();
+    return;
+  }
+
+  const { table, rowIndex, cellIndex } = pos;
+  const tableRows = Array.from(table.rows);
+  const lines = text.replace(/\r/g, "").split("\n");
+
+  for (let rowOffset = 0; rowOffset < lines.length; rowOffset += 1) {
+    const cols = lines[rowOffset].split("\t");
+    const targetRowIndex = rowIndex + rowOffset;
+    if (targetRowIndex >= tableRows.length) break;
+    const row = tableRows[targetRowIndex];
+    for (let colOffset = 0; colOffset < cols.length; colOffset += 1) {
+      const targetCellIndex = cellIndex + colOffset;
+      if (targetCellIndex >= row.cells.length) break;
+      const cell = row.cells[targetCellIndex];
+      const input = cell.querySelector("input");
+      if (input) input.value = cols[colOffset];
+    }
+  }
+
+  writeNursePayload();
+  pushHistorySnapshot();
+}
+
 function clearAll() {
   if (!window.confirm("გსურთ ექთნის ფურცლის სრულად გასუფთავება?")) return;
+  document.getElementById("nurseHistoryNo").value = "";
+  document.getElementById("nurseDiagnosis").value = "";
+  document.getElementById("nurseFullName").value = "";
+  document.getElementById("nurseAdmissionDate").value = "";
   renderNurseTables();
+  clearSelection();
   lastSyncedMeds = [];
+  attachSelectionHandlers();
+  document.querySelectorAll("[data-page]").forEach((btn) => btn.classList.remove("active"));
+  document.querySelector('[data-page="1"]')?.classList.add("active");
+  document.querySelectorAll(".page").forEach((page) => page.classList.remove("active"));
+  document.getElementById("p1")?.classList.add("active");
   writeNursePayload();
+  pushHistorySnapshot(true);
 }
 
 function setupPageNavigation() {
@@ -339,12 +575,139 @@ function setupPageNavigation() {
 function attachInputHandlers() {
   document.addEventListener("input", () => {
     writeNursePayload();
+    scheduleHistorySnapshot();
   });
 }
+
+document.addEventListener("mouseup", () => {
+  isSelecting = false;
+});
+
+document.addEventListener("paste", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement) || !event.clipboardData) return;
+  const text = event.clipboardData.getData("text");
+  if (!text.includes("\n") && !text.includes("\t")) return;
+  event.preventDefault();
+  pasteTextGrid(text, target);
+});
+
+document.addEventListener("keydown", (event) => {
+  const target = event.target;
+  const isInput = target instanceof HTMLInputElement;
+
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c") {
+    if (selectedInputs.size > 0) {
+      event.preventDefault();
+      copySelectedToClipboard();
+    }
+    return;
+  }
+
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "x") {
+    if (selectedInputs.size > 0) {
+      event.preventDefault();
+      copySelectedToClipboard().finally(() => {
+        selectedInputs.forEach((input) => {
+          input.value = "";
+        });
+        writeNursePayload();
+        pushHistorySnapshot();
+      });
+    }
+    return;
+  }
+
+  if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "z") {
+    event.preventDefault();
+    undoHistory();
+    return;
+  }
+
+  if (
+    ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") ||
+    ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "z")
+  ) {
+    event.preventDefault();
+    redoHistory();
+    return;
+  }
+
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a" && isInput) {
+    const cell = target.closest("td,th");
+    const table = cell?.closest("table");
+    if (!table) return;
+    event.preventDefault();
+    clearSelection();
+    table.querySelectorAll('input[type="text"], input[type="date"]').forEach((input) => {
+      addToSelection(input);
+    });
+    return;
+  }
+
+  if ((event.key === "Delete" || event.key === "Backspace") && selectedInputs.size > 1) {
+    event.preventDefault();
+    selectedInputs.forEach((input) => {
+      input.value = "";
+    });
+    writeNursePayload();
+    pushHistorySnapshot();
+    return;
+  }
+
+  if (!isInput) return;
+  if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter"].includes(event.key)) return;
+
+  const cell = target.closest("td,th");
+  const table = cell?.closest("table");
+  if (!cell || !table) return;
+
+  const inputsInTable = Array.from(table.querySelectorAll('input[type="text"], input[type="date"]'));
+  const currentIndex = inputsInTable.indexOf(target);
+
+  if (event.key === "ArrowRight") {
+    event.preventDefault();
+    if (currentIndex < inputsInTable.length - 1) inputsInTable[currentIndex + 1].focus();
+    return;
+  }
+
+  if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    if (currentIndex > 0) inputsInTable[currentIndex - 1].focus();
+    return;
+  }
+
+  const row = cell.parentElement;
+  const rows = Array.from(table.rows);
+  const rowIndex = rows.indexOf(row);
+  const cells = Array.from(row.cells);
+  const cellIndex = cells.indexOf(cell);
+
+  const moveVertical = (delta) => {
+    const targetRowIndex = rowIndex + delta;
+    if (targetRowIndex < 0 || targetRowIndex >= rows.length) return;
+    const targetRow = rows[targetRowIndex];
+    const targetCell = targetRow.cells[cellIndex] || targetRow.cells[targetRow.cells.length - 1];
+    const targetInput = targetCell?.querySelector("input");
+    if (targetInput) targetInput.focus();
+  };
+
+  if (event.key === "Enter" || event.key === "ArrowDown") {
+    event.preventDefault();
+    moveVertical(1);
+    return;
+  }
+
+  if (event.key === "ArrowUp") {
+    event.preventDefault();
+    moveVertical(-1);
+  }
+});
 
 async function initialize() {
   updateStatus("connecting", "მიმდინარეობს სისტემასთან დაკავშირება...");
   renderNurseTables();
+  attachSelectionHandlers();
   initializeDateFields();
   setupPageNavigation();
   attachInputHandlers();
@@ -357,6 +720,7 @@ async function initialize() {
     }
     applyLiveSyncPayload(payload);
     writeNursePayload();
+    pushHistorySnapshot(true);
   });
   document.getElementById("printBtn").addEventListener("click", () => window.print());
   document.getElementById("saveHistoryBtn").addEventListener("click", async () => {
@@ -390,11 +754,22 @@ async function initialize() {
     if (currentPrescriptionId) await hydratePrescription();
     const savedNursePayload = readNursePayload();
     if (savedNursePayload) applyNursePayload(savedNursePayload);
+    pushHistorySnapshot(true);
     updateStatus("online", "ფორმა მზადაა - შენახვა და ბეჭდვა მუშაობს");
   } catch (error) {
     updateStatus("offline", "ზოგი მონაცემი ვერ ჩაიტვირთა, მაგრამ შევსება მუშაობს");
     console.error(error);
   }
 }
+
+window.addEventListener("storage", (event) => {
+  if (event.key !== LIVE_SYNC_STORAGE_KEY || !event.newValue) return;
+  try {
+    applyLiveSyncPayload(JSON.parse(event.newValue));
+    writeNursePayload();
+  } catch (_) {
+    // ignore sync parse errors
+  }
+});
 
 initialize();
