@@ -1,8 +1,95 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ChevronLeft, Plus, FileText, ExternalLink, History, User as UserIcon, Calendar, Phone, MapPin, Fingerprint, Printer, Trash2, Building2 } from "lucide-react";
+import { ChevronLeft, Plus, FileText, ExternalLink, History, User as UserIcon, Calendar, Phone, MapPin, Fingerprint, Printer, Trash2, Building2, ClipboardList, ShieldAlert, ArrowLeftRight, AlertTriangle, Droplets } from "lucide-react";
 import api from "../lib/api";
 import { toast } from "sonner";
+
+const NURSING_DOC_ROUTES: Record<string, string> = {
+  nurse_morse: "morse",
+  nurse_braden: "braden",
+  nurse_handover: "handover",
+  nurse_abcdfwc: "abcdfwc",
+  nurse_assessment: "nursingAssessment",
+  blood_components_request: "bloodRequest",
+};
+
+const getPrescriptionLabel = (type: string) => {
+  if (type === "stationary") return "სტაციონარი";
+  if (type === "stationary24") return "სტაციონარი 24სთ";
+  if (type === "home") return "ბინა";
+  if (type === "nurse_morse") return "მორზეს შკალა";
+  if (type === "nurse_braden") return "ბრადენის შკალა";
+  if (type === "nurse_handover") return "ექთნის გადაბარება";
+  if (type === "nurse_abcdfwc") return "ABCDFWC შეფასება";
+  if (type === "nurse_assessment") return "საექთნო შეფასება";
+  if (type === "blood_components_request") return "სისხლის კომპონენტებზე მიმართვა";
+  return "დოკუმენტი";
+};
+
+const getPrescriptionTheme = (type: string) => {
+  if (type === "stationary") return "bg-blue-50 text-blue-700";
+  if (type === "stationary24") return "bg-orange-50 text-orange-700";
+  if (type === "home") return "bg-emerald-50 text-emerald-700";
+  if (type === "blood_components_request") return "bg-rose-50 text-rose-700";
+  return "bg-violet-50 text-violet-700";
+};
+
+const NURSING_ACTIONS = [
+  {
+    route: "morse",
+    title: "მორზეს შკალა",
+    subtitle: "დაცემის რისკის შეფასება",
+    icon: ShieldAlert,
+    cardClass: "hover:border-red-500",
+    iconClass: "bg-red-50 text-red-700 group-hover:bg-red-700 group-hover:text-white",
+    plusClass: "group-hover:text-red-700",
+  },
+  {
+    route: "braden",
+    title: "ბრადენის შკალა",
+    subtitle: "ნაწოლების რისკის შეფასება",
+    icon: ClipboardList,
+    cardClass: "hover:border-blue-500",
+    iconClass: "bg-blue-50 text-blue-700 group-hover:bg-blue-700 group-hover:text-white",
+    plusClass: "group-hover:text-blue-700",
+  },
+  {
+    route: "handover",
+    title: "ექთნის გადაბარება",
+    subtitle: "გადაბარების ჩექლისტი",
+    icon: ArrowLeftRight,
+    cardClass: "hover:border-emerald-500",
+    iconClass: "bg-emerald-50 text-emerald-700 group-hover:bg-emerald-700 group-hover:text-white",
+    plusClass: "group-hover:text-emerald-700",
+  },
+  {
+    route: "abcdfwc",
+    title: "ABCDFWC შეფასება",
+    subtitle: "პირველადი საექთნო შეფასება",
+    icon: AlertTriangle,
+    cardClass: "hover:border-orange-500",
+    iconClass: "bg-orange-50 text-orange-700 group-hover:bg-orange-700 group-hover:text-white",
+    plusClass: "group-hover:text-orange-700",
+  },
+  {
+    route: "nursingAssessment",
+    title: "საექთნო შეფასება",
+    subtitle: "სრული საექთნო ფორმა",
+    icon: ClipboardList,
+    cardClass: "hover:border-violet-500",
+    iconClass: "bg-violet-50 text-violet-700 group-hover:bg-violet-700 group-hover:text-white",
+    plusClass: "group-hover:text-violet-700",
+  },
+  {
+    route: "bloodRequest",
+    title: "სისხლის კომპონენტები",
+    subtitle: "მიმართვის ფორმა",
+    icon: Droplets,
+    cardClass: "hover:border-rose-500",
+    iconClass: "bg-rose-50 text-rose-700 group-hover:bg-rose-700 group-hover:text-white",
+    plusClass: "group-hover:text-rose-700",
+  },
+];
 
 export default function PatientProfile() {
   const { id } = useParams();
@@ -24,6 +111,13 @@ export default function PatientProfile() {
     const search = new URLSearchParams(params);
     const nextUrl = new URL(window.location.href);
     nextUrl.hash = `/patients/${id}/stationary?${search.toString()}`;
+    return nextUrl.toString();
+  };
+
+  const buildNursingUrl = (docType: string, params: Record<string, string>) => {
+    const search = new URLSearchParams(params);
+    const nextUrl = new URL(window.location.href);
+    nextUrl.hash = `/patients/${id}/nursing/${docType}?${search.toString()}`;
     return nextUrl.toString();
   };
 
@@ -49,6 +143,12 @@ export default function PatientProfile() {
       return;
     }
 
+    const nursingDocRoute = NURSING_DOC_ROUTES[prescription.type];
+    if (nursingDocRoute) {
+      navigate(`/patients/${id}/nursing/${nursingDocRoute}?prescriptionId=${prescription.id}`);
+      return;
+    }
+
     const formType = prescription.type === "stationary24" ? "stationary24" : "home";
     window.location.href = buildFormUrl(formType, {
       patientId: String(id || ""),
@@ -60,6 +160,22 @@ export default function PatientProfile() {
     if (prescription.type === "stationary") {
       const popup = window.open(
         buildStationaryUrl({
+          prescriptionId: String(prescription.id),
+          autoPrint: "1",
+        }),
+        "_blank",
+        "noopener"
+      );
+      if (!popup) {
+        toast.error("ბეჭდვის ფანჯარა ვერ გაიხსნა");
+      }
+      return;
+    }
+
+    const nursingDocRoute = NURSING_DOC_ROUTES[prescription.type];
+    if (nursingDocRoute) {
+      const popup = window.open(
+        buildNursingUrl(nursingDocRoute, {
           prescriptionId: String(prescription.id),
           autoPrint: "1",
         }),
@@ -191,6 +307,15 @@ export default function PatientProfile() {
                 </div>
                 <div className="flex items-center gap-3 text-slate-600">
                   <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+                    <FileText size={18} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">სისხლის ჯგუფი / რეზუსი</p>
+                    <p className="font-medium">{[patient.bloodGroup, patient.rhesus].filter(Boolean).join(" ") || "-"}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 text-slate-600">
+                  <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
                     <MapPin size={18} />
                   </div>
                   <div>
@@ -258,6 +383,28 @@ export default function PatientProfile() {
               <ExternalLink size={20} className="text-slate-300 group-hover:text-emerald-700" />
             </a>
 
+            {NURSING_ACTIONS.map((action) => {
+              const Icon = action.icon;
+              return (
+                <button
+                  key={action.route}
+                  onClick={() => navigate(`/patients/${id}/nursing/${action.route}?fresh=1`)}
+                  className={`flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:shadow-md transition-all group ${action.cardClass}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${action.iconClass}`}>
+                      <Icon size={24} />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold text-slate-900">{action.title}</p>
+                      <p className="text-xs text-slate-500">{action.subtitle}</p>
+                    </div>
+                  </div>
+                  <Plus size={20} className={`text-slate-300 ${action.plusClass}`} />
+                </button>
+              );
+            })}
+
             <button
               onClick={deletePatient}
               disabled={deletingPatient}
@@ -305,16 +452,13 @@ export default function PatientProfile() {
                     <div key={pres.id} className="p-6 hover:bg-slate-50 transition-colors flex items-center justify-between group cursor-pointer" onClick={() => openPrescription(pres)}>
                       <div className="flex items-center gap-4">
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                          pres.type === 'stationary' ? 'bg-blue-50 text-blue-700' : 
-                          pres.type === 'stationary24' ? 'bg-orange-50 text-orange-700' : 
-                          'bg-emerald-50 text-emerald-700'
+                          getPrescriptionTheme(pres.type)
                         }`}>
                           <FileText size={20} />
                         </div>
                         <div>
                           <p className="font-bold text-slate-900">
-                            {pres.type === 'stationary' ? 'სტაციონარი' : 
-                             pres.type === 'stationary24' ? 'სტაციონარი 24სთ' : 'ბინა'}
+                            {getPrescriptionLabel(pres.type)}
                           </p>
                           <p className="text-xs text-slate-500">
                             შექმნილია: {new Date(pres.createdAt).toLocaleString('ka-GE')}

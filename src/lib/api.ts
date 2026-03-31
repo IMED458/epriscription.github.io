@@ -20,12 +20,19 @@ const STATIC_USERS = [
     role: "admin",
     name: "ადმინისტრატორი",
     phone: "",
+    department: "",
   },
 ];
 const MANAGED_USER_ROLES = new Set(["doctor", "nurse", "junior_doctor"]);
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function createApiError(message: string, status: number, extra: Record<string, any> = {}) {
+  const error = new Error(message);
+  Object.assign(error, { status }, extra);
+  return error as Error & Record<string, any>;
 }
 
 function normalizeUsername(value: unknown) {
@@ -319,6 +326,7 @@ function extractPrescriptionMetadata(item: Record<string, any>) {
       payload?.patientHistoryNumber,
       payload?.header?.historyNumber,
       payload?.header?.hist,
+      payload?.patientInfo?.historyNum,
       payload?.observation?.header?.historyNumber,
       payload?.observation?.header?.hist,
       payload?.nurse?.header?.historyNo,
@@ -328,6 +336,7 @@ function extractPrescriptionMetadata(item: Record<string, any>) {
       payload?.personalId,
       payload?.patientPersonalId,
       payload?.patient?.personalId,
+      payload?.patientInfo?.id,
       payload?.observation?.header?.personalId,
     ),
   };
@@ -374,6 +383,7 @@ function sanitizeUserRecord(user: Record<string, any>) {
     role: String(user.role || ""),
     name: String(user.name || ""),
     phone: String(user.phone || ""),
+    department: String(user.department || ""),
     createdAt: user.createdAt || "",
     updatedAt: user.updatedAt || "",
     isStatic: Boolean(user.isStatic),
@@ -405,6 +415,32 @@ function resolveCreatorMetadata<T extends Record<string, any>>(item: T, users: R
     createdByRole: String(item.createdByRole || creator?.role || ""),
     createdByPhone: String(item.createdByPhone || creator?.phone || ""),
   };
+}
+
+function getUserDepartment(user: Record<string, any> | null | undefined) {
+  return String(user?.department || "").trim();
+}
+
+function getPatientOwnerDepartment(patient: Record<string, any> | null | undefined) {
+  return String(patient?.ownerDepartment || patient?.department || "").trim();
+}
+
+function canAccessPatient(user: Record<string, any>, patient: Record<string, any>) {
+  if (user?.role === "admin") return true;
+  if (String(patient?.createdBy || "") === String(user?.id || "")) return true;
+
+  const patientDepartment = getPatientOwnerDepartment(patient);
+  if (!patientDepartment) return true;
+
+  const userDepartment = getUserDepartment(user);
+  if (!userDepartment) return false;
+  return patientDepartment === userDepartment;
+}
+
+function ensurePatientAccess(user: Record<string, any>, patient: Record<string, any>) {
+  if (!canAccessPatient(user, patient)) {
+    throw createApiError("FORBIDDEN", 403);
+  }
 }
 
 function toResponse(data: any) {
@@ -450,19 +486,25 @@ const api = {
     }
 
     if (path === "/staff-users") {
-      await ensureDataSession();
+      const user = await ensureDataSession();
       const storedUsers = await readAllUsers();
+      const userDepartment = getUserDepartment(user);
       return toResponse(
         sortUsers([
           ...getStaticUsers().map(sanitizeUserRecord),
           ...storedUsers.map(sanitizeUserRecord),
-        ])
+        ].filter((item) => {
+          if (user.role === "admin") return true;
+          if (!userDepartment) return String(item.id || "") === String(user.id || "");
+          if (!item.department) return false;
+          return String(item.department || "") === userDepartment;
+        }))
       );
     }
 
     if (path === "/patients") {
-      await ensureDataSession();
-      const patients = await readAllPatients();
+      const user = await ensureDataSession();
+      const patients = (await readAllPatients()).filter((patient) => canAccessPatient(user, patient));
       patients.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
       return toResponse(patients);
     }
@@ -482,7 +524,7 @@ const api = {
     }
 
     if (path.startsWith("/patients/")) {
-      await ensureDataSession();
+      const user = await ensureDataSession();
       const patientId = path.slice("/patients/".length);
       const patientSnap = await getDoc(doc(firebaseDb, "patients", patientId));
       if (!patientSnap.exists()) {
@@ -490,6 +532,7 @@ const api = {
       }
 
       const patient = normalizeRecord(patientSnap.data())!;
+      ensurePatientAccess(user, patient);
       const allUsers = [...getStaticUsers(), ...(await readAllUsers())];
       const prescriptions = (await readAllPrescriptions())
         .filter((item) => {
@@ -508,7 +551,7 @@ const api = {
     }
 
     if (path.startsWith("/prescriptions/")) {
-      await ensureDataSession();
+      const user = await ensureDataSession();
       const prescriptionId = path.slice("/prescriptions/".length);
       const prescriptionSnap = await getDoc(doc(firebaseDb, "prescriptions", prescriptionId));
       if (!prescriptionSnap.exists()) {
@@ -519,8 +562,11 @@ const api = {
       let patient = null;
 
       if (prescription.patientId) {
-      const patientSnap = await getDoc(doc(firebaseDb, "patients", String(prescription.patientId)));
-      patient = patientSnap.exists() ? normalizeRecord(patientSnap.data()) : null;
+        const patientSnap = await getDoc(doc(firebaseDb, "patients", String(prescription.patientId)));
+        patient = patientSnap.exists() ? normalizeRecord(patientSnap.data()) : null;
+        if (patient) {
+          ensurePatientAccess(user, patient);
+        }
       }
 
       const allUsers = [...getStaticUsers(), ...(await readAllUsers())];
@@ -570,11 +616,12 @@ const api = {
       const password = String(body?.password || "");
       const name = String(body?.name || "").trim();
       const phone = String(body?.phone || "").trim();
+      const department = String(body?.department || "").trim();
       const role = String(body?.role || "").trim();
       const existingUsers = [...getStaticUsers(), ...(await readAllUsers())];
       const duplicate = existingUsers.some((item) => normalizeUsername(item.username) === username);
 
-      if (!username || !password || !name || !phone || !MANAGED_USER_ROLES.has(role) || duplicate) {
+      if (!username || !password || !name || !phone || !department || !MANAGED_USER_ROLES.has(role) || duplicate) {
         throw new Error("Invalid user data");
       }
 
@@ -587,6 +634,7 @@ const api = {
         role,
         name,
         phone,
+        department,
         createdAt,
         updatedAt: createdAt,
       };
@@ -596,30 +644,46 @@ const api = {
     }
 
     if (path === "/patients") {
-      await ensureDataSession();
+      const user = await ensureDataSession();
       const allPatients = await readAllPatients();
+      const historyNumber = String(body?.historyNumber || "").trim();
+      const personalId = String(body?.personalId || "").trim();
       const nextPatient = {
         id: "",
-        historyNumber: String(body?.historyNumber || "").trim(),
+        historyNumber,
         firstName: String(body?.firstName || "").trim(),
         lastName: String(body?.lastName || "").trim(),
-        personalId: String(body?.personalId || "").trim(),
+        personalId,
         birthDate: body?.birthDate || "",
         gender: body?.gender || "",
         phone: body?.phone || "",
         room: String(body?.room || "").trim(),
+        bloodGroup: String(body?.bloodGroup || "").trim(),
+        rhesus: String(body?.rhesus || "").trim(),
+        department: String(body?.department || "").trim(),
+        ownerDepartment: getUserDepartment(user) || String(body?.department || "").trim(),
+        createdBy: String(user.id || ""),
+        createdByName: String(user.name || "").trim(),
         address: body?.address || "",
         createdAt: nowIso(),
         updatedAt: nowIso(),
       };
 
-      const duplicate = allPatients.some(
+      const duplicate = allPatients.find(
         (item) =>
           item.historyNumber === nextPatient.historyNumber ||
           item.personalId === nextPatient.personalId
       );
 
-      if (!nextPatient.historyNumber || !nextPatient.personalId || duplicate) {
+      if (duplicate) {
+        throw createApiError("Patient already exists", 409, {
+          code: "DUPLICATE_PATIENT",
+          existingPatientId: String(duplicate.id || ""),
+          existingPatientName: `${duplicate.firstName || ""} ${duplicate.lastName || ""}`.trim(),
+        });
+      }
+
+      if (!nextPatient.historyNumber || !nextPatient.personalId) {
         throw new Error("Patient already exists or invalid data");
       }
 
@@ -702,6 +766,9 @@ const api = {
       const nextPhone = Object.prototype.hasOwnProperty.call(body || {}, "phone")
         ? String(body?.phone || "").trim()
         : String(currentValue.phone || "");
+      const nextDepartment = Object.prototype.hasOwnProperty.call(body || {}, "department")
+        ? String(body?.department || "").trim()
+        : String(currentValue.department || "");
       const nextPassword = Object.prototype.hasOwnProperty.call(body || {}, "password")
         ? String(body?.password || "")
         : String(currentValue.password || "");
@@ -710,7 +777,7 @@ const api = {
         (item) => item.id !== userId && normalizeUsername(item.username) === nextUsername
       );
 
-      if (!nextUsername || !nextName || !nextPhone || !nextPassword || !MANAGED_USER_ROLES.has(nextRole) || duplicate) {
+      if (!nextUsername || !nextName || !nextPhone || !nextDepartment || !nextPassword || !MANAGED_USER_ROLES.has(nextRole) || duplicate) {
         throw new Error("Invalid user data");
       }
 
@@ -720,6 +787,7 @@ const api = {
         role: nextRole,
         name: nextName,
         phone: nextPhone,
+        department: nextDepartment,
         password: nextPassword,
         updatedAt: nowIso(),
       };
@@ -777,7 +845,7 @@ const api = {
     }
 
     if (path.startsWith("/patients/")) {
-      await ensureDataSession();
+      const user = await ensureDataSession();
       const patientId = path.slice("/patients/".length);
       const patientRef = doc(firebaseDb, "patients", patientId);
       const patientSnap = await getDoc(patientRef);
@@ -787,6 +855,7 @@ const api = {
       }
 
       const patient = normalizeRecord(patientSnap.data())!;
+      ensurePatientAccess(user, patient);
       const prescriptionsToDelete = (await readAllPrescriptions()).filter((item) => {
         if (String(item.patientId || "") === patientId) return true;
         const metadata = extractPrescriptionMetadata(item);

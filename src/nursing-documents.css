@@ -1,0 +1,909 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Georgian:wght@300;400;500;600;700&display=swap');
+
+.clinic-logo {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.clinic-logo--default {
+  max-width: min(9rem, 34vw);
+}
+
+.clinic-logo--compact {
+  max-width: min(6.8rem, 28vw);
+}
+
+.morse-leader {
+  flex: 1 1 0%;
+  min-width: 2rem;
+  height: 2px;
+  align-self: center;
+  background-image: radial-gradient(circle, currentColor 1px, transparent 1.2px);
+  background-position: left center;
+  background-repeat: repeat-x;
+  background-size: 6px 2px;
+}
+
+.print-only {
+  display: none;
+}
+
+.nursing-documents-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.nursing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgb(226 232 240);
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 24px;
+  padding: 14px 18px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  position: sticky;
+  top: 84px;
+  z-index: 20;
+  backdrop-filter: blur(10px);
+}
+
+.nursing-actions__group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.nursing-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+  border: 1px solid rgb(203 213 225);
+  background: white;
+  color: rgb(51 65 85);
+}
+
+.nursing-action-btn:hover {
+  border-color: rgb(37 99 235);
+  color: rgb(29 78 216);
+  background: rgb(239 246 255);
+}
+
+.nursing-action-btn--primary {
+  background: rgb(30 64 175);
+  color: white;
+  border-color: rgb(30 64 175);
+}
+
+.nursing-action-btn--primary:hover {
+  background: rgb(30 58 138);
+  border-color: rgb(30 58 138);
+  color: white;
+}
+
+.nursing-action-btn--danger:hover {
+  border-color: rgb(220 38 38);
+  color: rgb(185 28 28);
+  background: rgb(254 242 242);
+}
+
+.nursing-template-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 50;
+}
+
+.nursing-template-card {
+  width: min(720px, 100%);
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 28px;
+  border: 1px solid rgb(226 232 240);
+  background: white;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.2);
+}
+
+.nursing-template-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid rgb(241 245 249);
+}
+
+.nursing-template-card__body {
+  padding: 20px 24px 24px;
+  overflow-y: auto;
+}
+
+.nursing-template-list {
+  display: grid;
+  gap: 12px;
+}
+
+.nursing-template-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 18px;
+  border: 1px solid rgb(226 232 240);
+  background: rgb(248 250 252);
+  padding: 16px;
+}
+
+.nursing-template-item__meta {
+  min-width: 0;
+}
+
+.nursing-template-item__meta strong {
+  display: block;
+  font-size: 15px;
+  color: rgb(15 23 42);
+}
+
+.nursing-template-item__meta span {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(148 163 184);
+}
+
+.nursing-template-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.blood-request-shell {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 8px 32px;
+}
+
+.blood-request-card {
+  background: white;
+  border: 1px solid #c8c0b0;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08);
+  padding: 28px 36px 32px;
+}
+
+.blood-request-header {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.blood-request-logo {
+  width: 180px;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto 12px;
+  object-fit: contain;
+}
+
+.blood-request-org-ka,
+.blood-request-org-en,
+.blood-request-org-dept,
+.blood-request-title,
+.blood-request-label,
+.blood-request-checkbox-text {
+  font-family: 'Noto Sans Georgian', sans-serif;
+}
+
+.blood-request-org-ka {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.5;
+  margin-bottom: 3px;
+}
+
+.blood-request-org-en {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.blood-request-org-dept {
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+}
+
+.blood-request-divider {
+  border: none;
+  border-top: 3px solid #1a1a1a;
+  margin: 16px 0 20px;
+}
+
+.blood-request-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: center;
+  margin-bottom: 26px;
+}
+
+.blood-request-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.blood-request-label {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.8;
+}
+
+.blood-request-line,
+.blood-request-select {
+  border: none;
+  border-bottom: 1px solid #1a1a1a;
+  background: transparent;
+  font-family: 'Noto Sans Georgian', sans-serif;
+  font-size: 13px;
+  color: #1a1a1a;
+  padding: 2px 4px;
+  outline: none;
+  line-height: 1.8;
+  min-width: 0;
+}
+
+.blood-request-line {
+  flex: 1;
+}
+
+.blood-request-line:focus,
+.blood-request-select:focus {
+  border-bottom-color: #3a6fa8;
+  background: #f4f8fd;
+}
+
+.blood-request-select {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%231a1a1a'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+  padding-right: 20px;
+}
+
+.blood-request-transfusion {
+  margin: 6px 0 20px;
+}
+
+.blood-request-checkbox-item {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-left: 16px;
+}
+
+.blood-request-checkbox-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  accent-color: #1a1a1a;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+
+.blood-request-checkbox-text {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.blood-request-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 40px;
+  margin-top: 30px;
+}
+
+.blood-request-bottom-field {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex: 1;
+}
+
+.handover-shell {
+  padding: 24px;
+}
+
+.handover-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.handover-page,
+.handover-page * {
+  box-sizing: border-box;
+}
+
+.handover-page {
+  font-family: 'Segoe UI', 'Noto Sans Georgian', Arial, sans-serif;
+  font-size: 12px;
+  background: #fff;
+  color: #000;
+}
+
+.handover-page .page {
+  max-width: 780px;
+  margin: 0 auto;
+  background: #fff;
+}
+
+.handover-page .header-table,
+.handover-page .main-table,
+.handover-page .sign-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.handover-page .header-table td {
+  border: 1px solid #000;
+  padding: 4px 8px;
+  vertical-align: middle;
+  font-size: 11px;
+}
+
+.handover-page .logo-cell {
+  width: 180px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 1.5;
+  padding: 4px 8px;
+}
+
+.handover-page .handover-logo-image {
+  display: block;
+  width: 100%;
+  max-width: 156px;
+  max-height: 56px;
+  margin: 0 auto;
+  object-fit: contain;
+}
+
+.handover-page .title-main {
+  text-align: center;
+  font-size: 14px;
+  font-weight: bold;
+  padding: 8px;
+  border: 1px solid #000;
+  border-top: none;
+}
+
+.handover-page .main-table td,
+.handover-page .main-table th {
+  border: 1px solid #000;
+  padding: 5px 7px;
+  vertical-align: middle;
+  font-size: 11.5px;
+}
+
+.handover-page .main-table th {
+  background: #d9d9d9;
+  font-weight: bold;
+  text-align: center;
+  font-size: 12px;
+}
+
+.handover-page .col-name {
+  width: 55%;
+}
+
+.handover-page .col-value {
+  width: 45%;
+}
+
+.handover-page .sec-row td {
+  background: #f2f2f2;
+  font-weight: bold;
+  text-align: center;
+  font-size: 12px;
+  padding: 5px;
+}
+
+.handover-page input[type="text"],
+.handover-page input[type="date"],
+.handover-page input[type="number"] {
+  border: none;
+  border-bottom: 1px solid #666;
+  outline: none;
+  font-size: 11.5px;
+  font-family: inherit;
+  background: transparent;
+  width: 100%;
+  padding: 1px 2px;
+}
+
+.handover-page textarea {
+  border: none;
+  outline: none;
+  font-size: 11.5px;
+  font-family: inherit;
+  background: transparent;
+  width: 100%;
+  resize: vertical;
+  min-height: 38px;
+  padding: 1px 2px;
+}
+
+.handover-page .cr {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+  line-height: 2;
+}
+
+.handover-page .cr label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.handover-page .cr input[type="checkbox"],
+.handover-page .cr input[type="radio"],
+.handover-page .cb-field input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+  accent-color: #000;
+  flex-shrink: 0;
+}
+
+.handover-page .cb-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.handover-page .ii {
+  display: inline-block;
+  border: none;
+  border-bottom: 1px solid #666;
+  outline: none;
+  font-size: 11.5px;
+  font-family: inherit;
+  background: transparent;
+  padding: 0 2px;
+}
+
+.handover-page .sign-table td {
+  border: 1px solid #000;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  vertical-align: bottom;
+}
+
+.handover-page .sign-line {
+  border: none;
+  border-bottom: 1px solid #666;
+  outline: none;
+  font-size: 11.5px;
+  font-family: inherit;
+  background: transparent;
+  width: 100%;
+  padding: 2px;
+  margin-top: 4px;
+  display: block;
+}
+
+.handover-page .print-btn {
+  display: block;
+  margin: 16px auto 0;
+  padding: 8px 28px;
+  font-size: 13px;
+  cursor: pointer;
+  background: #1a5fa8;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+}
+
+.abcdfwc-shell,
+.nursing-assessment-shell {
+  padding: 24px;
+}
+
+.abcdfwc-toolbar,
+.nursing-assessment-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.abcdfwc-page,
+.abcdfwc-page *,
+.nursing-assessment-page,
+.nursing-assessment-page * {
+  box-sizing: border-box;
+}
+
+.abcdfwc-page,
+.nursing-assessment-page {
+  font-family: 'Segoe UI', 'Noto Sans Georgian', Arial, sans-serif;
+  font-size: 11.5px;
+  background: #fff;
+  color: #000;
+}
+
+.abcdfwc-page .page {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.nursing-assessment-page .page {
+  max-width: 940px;
+  margin: 0 auto;
+}
+
+.abcdfwc-logo-wrap,
+.nursing-assessment-logo-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.abcdfwc-page table,
+.nursing-assessment-page table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.abcdfwc-page td,
+.abcdfwc-page th,
+.nursing-assessment-page td,
+.nursing-assessment-page th {
+  border: 1px solid #000;
+  padding: 4px 6px;
+  vertical-align: middle;
+  font-size: 11.5px;
+}
+
+.nursing-assessment-page td,
+.nursing-assessment-page th {
+  vertical-align: top;
+}
+
+.abcdfwc-page .title-row td,
+.nursing-assessment-page .title-row td {
+  text-align: center;
+  font-weight: bold;
+  font-size: 13px;
+  padding: 8px;
+  vertical-align: middle;
+  background: #fff;
+}
+
+.abcdfwc-page .section-label,
+.nursing-assessment-page .sec-label {
+  font-weight: bold;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-align: center;
+  white-space: nowrap;
+  padding: 6px 4px;
+  width: 28px;
+  min-width: 28px;
+  background: #f2f2f2;
+}
+
+.nursing-assessment-page .sec-label {
+  font-size: 11px;
+  width: 26px;
+  min-width: 26px;
+  padding: 6px 3px;
+}
+
+.abcdfwc-page .section-header-cell,
+.abcdfwc-page .right-header-cell,
+.nursing-assessment-page .sec-hdr td {
+  background: #d9d9d9;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.abcdfwc-page .right-header-cell {
+  text-align: center;
+}
+
+.abcdfwc-page input[type="text"],
+.abcdfwc-page input[type="date"],
+.abcdfwc-page input[type="number"],
+.abcdfwc-page input[type="time"],
+.nursing-assessment-page input[type="text"],
+.nursing-assessment-page input[type="date"],
+.nursing-assessment-page input[type="time"] {
+  border: none;
+  border-bottom: 1px solid #555;
+  outline: none;
+  font-size: 11.5px;
+  font-family: inherit;
+  background: transparent;
+  padding: 1px 2px;
+}
+
+.abcdfwc-page input[type="text"],
+.abcdfwc-page input[type="date"],
+.abcdfwc-page input[type="number"],
+.abcdfwc-page input[type="time"] {
+  width: 100%;
+}
+
+.nursing-assessment-page input[type="text"] {
+  width: 100%;
+}
+
+.abcdfwc-page textarea,
+.nursing-assessment-page textarea {
+  border: none;
+  outline: none;
+  font-size: 11.5px;
+  font-family: inherit;
+  background: transparent;
+  width: 100%;
+  resize: vertical;
+  padding: 1px 2px;
+}
+
+.abcdfwc-page textarea {
+  min-height: 22px;
+}
+
+.nursing-assessment-page textarea {
+  min-height: 20px;
+}
+
+.abcdfwc-page .cr,
+.nursing-assessment-page .cr {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.abcdfwc-page .cr {
+  gap: 3px 10px;
+  line-height: 1.9;
+}
+
+.nursing-assessment-page .cr {
+  gap: 2px 10px;
+  line-height: 1.9;
+}
+
+.abcdfwc-page .cr label,
+.nursing-assessment-page .cr label,
+.nursing-assessment-page .pain-scale label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.abcdfwc-page .cr input[type="checkbox"],
+.abcdfwc-page .cr input[type="radio"],
+.nursing-assessment-page .cr input[type="checkbox"],
+.nursing-assessment-page .cr input[type="radio"],
+.nursing-assessment-page .pain-scale input[type="radio"] {
+  width: 12px;
+  height: 12px;
+  cursor: pointer;
+  accent-color: #000;
+  flex-shrink: 0;
+}
+
+.abcdfwc-page .ii,
+.nursing-assessment-page .ii {
+  display: inline-block;
+  border: none;
+  border-bottom: 1px solid #555;
+  outline: none;
+  font-size: 11.5px;
+  font-family: inherit;
+  background: transparent;
+  padding: 0 2px;
+}
+
+.abcdfwc-page .vitals-header td,
+.nursing-assessment-page .vitals-hdr td {
+  text-align: center;
+  font-weight: bold;
+  background: #f2f2f2;
+  font-size: 11px;
+  padding: 3px 4px;
+}
+
+.abcdfwc-page .vitals-input td,
+.nursing-assessment-page .vitals-inp td {
+  padding: 4px;
+  text-align: center;
+}
+
+.abcdfwc-page .vitals-input input,
+.nursing-assessment-page .vitals-inp input {
+  text-align: center;
+}
+
+.nursing-assessment-page .pain-scale {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.nursing-assessment-page .pain-scale label {
+  font-size: 11px;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  html,
+  body {
+    margin: 0;
+    background: white !important;
+  }
+
+  body {
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .screen-only {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-sheet {
+    width: 100%;
+    max-width: 190mm;
+    min-height: 277mm;
+    margin: 0 auto;
+    color: black !important;
+    background: white !important;
+    box-shadow: none !important;
+  }
+
+  .print-sheet,
+  .print-sheet * {
+    color: black !important;
+    border-color: black !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+
+  .print-break-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  input,
+  textarea,
+  select {
+    color: black !important;
+  }
+
+  .clinic-logo--default,
+  .clinic-logo--compact {
+    max-width: 5.4rem !important;
+  }
+
+  .nursing-actions,
+  .nursing-template-modal {
+    display: none !important;
+  }
+
+  .blood-request-shell {
+    padding: 0;
+  }
+
+  .blood-request-card {
+    box-shadow: none;
+    border: none;
+    padding: 0;
+  }
+
+  .handover-shell {
+    padding: 0 !important;
+  }
+
+  .handover-toolbar,
+  .abcdfwc-shell,
+  .nursing-assessment-shell {
+    padding: 0 !important;
+  }
+
+  .handover-toolbar,
+  .abcdfwc-toolbar,
+  .nursing-assessment-toolbar,
+  .handover-page .print-btn {
+    display: none !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .nursing-actions {
+    top: 70px;
+    padding: 12px 14px;
+    border-radius: 20px;
+  }
+
+  .blood-request-card {
+    padding: 24px 20px 28px;
+  }
+
+  .blood-request-row,
+  .blood-request-bottom {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .blood-request-checkbox-item {
+    padding-left: 0;
+    flex-wrap: wrap;
+  }
+
+  .blood-request-checkbox-text {
+    white-space: normal;
+  }
+}

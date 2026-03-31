@@ -311,6 +311,7 @@ function applyObservationPayload(payload = {}) {
 }
 
 function defaultPassportFromPatient(patient) {
+  const bloodParts = [patient.bloodGroup, patient.rhesus].filter(Boolean);
   return {
     fullName: `${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
     hist: patient.historyNumber || "",
@@ -319,9 +320,9 @@ function defaultPassportFromPatient(patient) {
     admission: todayDisplay(),
     today: todayDisplay(),
     icd: "",
-    dept: "",
-    blood: "",
-    room: "",
+    dept: patient.department || "",
+    blood: bloodParts.join(" "),
+    room: patient.room || "",
     allergy: "",
   };
 }

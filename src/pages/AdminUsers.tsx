@@ -19,6 +19,7 @@ const defaultForm = {
   username: "",
   password: "",
   phone: "",
+  department: "",
   role: "doctor",
 };
 
@@ -73,6 +74,7 @@ export default function AdminUsers() {
         name: String(user.name || "").trim(),
         username: String(user.username || "").trim(),
         phone: String(user.phone || "").trim(),
+        department: String(user.department || "").trim(),
         role: String(user.role || "").trim(),
       };
 
@@ -122,7 +124,7 @@ export default function AdminUsers() {
           <h2 className="text-xl font-bold text-slate-900">ახალი მომხმარებელი</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
           <input
             required
             type="text"
@@ -154,6 +156,14 @@ export default function AdminUsers() {
             className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             value={createForm.phone}
             onChange={(event) => setCreateForm({ ...createForm, phone: event.target.value })}
+          />
+          <input
+            required
+            type="text"
+            placeholder="განყოფილება"
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            value={createForm.department}
+            onChange={(event) => setCreateForm({ ...createForm, department: event.target.value })}
           />
           <select
             className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -190,6 +200,7 @@ export default function AdminUsers() {
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">სახელი</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">მომხმარებელი</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">ტელეფონი</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">განყოფილება</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">როლი</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">ახალი პაროლი</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">მოქმედება</th>
@@ -198,11 +209,11 @@ export default function AdminUsers() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center text-slate-400">იტვირთება...</td>
+                  <td colSpan={7} className="px-6 py-10 text-center text-slate-400">იტვირთება...</td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center text-slate-400">მომხმარებლები არ მოიძებნა</td>
+                  <td colSpan={7} className="px-6 py-10 text-center text-slate-400">მომხმარებლები არ მოიძებნა</td>
                 </tr>
               ) : (
                 users.map((user) => (
@@ -243,6 +254,18 @@ export default function AdminUsers() {
                           className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
                           value={user.phone || ""}
                           onChange={(event) => handleFieldChange(user.id, "phone", event.target.value)}
+                        />
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {user.isStatic ? (
+                        <span className="text-slate-500">{user.department || "-"}</span>
+                      ) : (
+                        <input
+                          type="text"
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                          value={user.department || ""}
+                          onChange={(event) => handleFieldChange(user.id, "department", event.target.value)}
                         />
                       )}
                     </td>

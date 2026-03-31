@@ -7,6 +7,7 @@ import clinicLogo from "./assets/clinic-logo.png";
 
 import PatientProfile from "./pages/PatientProfile";
 import StationaryForm from "./pages/StationaryForm";
+import NursingDocumentsPage from "./pages/NursingDocumentsPage";
 
 import NewPatient from "./pages/NewPatient";
 import AdminUsers from "./pages/AdminUsers";
@@ -173,10 +174,21 @@ const Dashboard = () => {
       // If found, we can either redirect to a "create" page with this data or create it automatically
       // Let's ask if they want to add this patient
       if (window.confirm(`მოიძებნა პაციენტი: ${res.data.firstName} ${res.data.lastName}. გსურთ ბაზაში დამატება?`)) {
-        const createRes = await api.post("/patients", res.data);
-        toast.success("პაციენტი წარმატებით დაემატა");
-        fetchPatients();
-        navigate(`/patients/${createRes.data.id}`);
+        try {
+          const createRes = await api.post("/patients", res.data);
+          toast.success("პაციენტი წარმატებით დაემატა");
+          fetchPatients();
+          navigate(`/patients/${createRes.data.id}`);
+        } catch (err: any) {
+          if (err?.code === "DUPLICATE_PATIENT") {
+            toast.error("პაციენტი უკვე ჩასმულია აღნიშნულ პროგრამაში");
+            if (err?.existingPatientId) {
+              navigate(`/patients/${err.existingPatientId}`);
+            }
+          } else {
+            throw err;
+          }
+        }
       }
     } catch (err) {
       toast.error("პაციენტი გარე რეესტრში ვერ მოიძებნა");
@@ -319,6 +331,8 @@ export default function App() {
             <Route path="/patients" element={<Layout user={user} onLogout={handleLogout}><Dashboard /></Layout>} />
             <Route path="/patients/:id" element={<Layout user={user} onLogout={handleLogout}><PatientProfile /></Layout>} />
             <Route path="/patients/:id/stationary" element={<Layout user={user} onLogout={handleLogout}><StationaryForm /></Layout>} />
+            <Route path="/patients/:id/nursing" element={<Layout user={user} onLogout={handleLogout}><NursingDocumentsPage /></Layout>} />
+            <Route path="/patients/:id/nursing/:docType" element={<Layout user={user} onLogout={handleLogout}><NursingDocumentsPage /></Layout>} />
             <Route path="/patients/new" element={<Layout user={user} onLogout={handleLogout}><NewPatient /></Layout>} />
             <Route
               path="/admin/users"

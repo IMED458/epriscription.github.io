@@ -18,6 +18,9 @@ export default function NewPatient() {
     gender: "male",
     phone: "",
     room: "",
+    bloodGroup: "",
+    rhesus: "",
+    department: "",
     address: ""
   });
   const lookupSeqRef = useRef(0);
@@ -61,6 +64,9 @@ export default function NewPatient() {
           gender: normalizeGender(res.data.gender, prev.gender as "male" | "female"),
           phone: res.data.phone || "",
           room: prev.room,
+          bloodGroup: prev.bloodGroup,
+          rhesus: prev.rhesus,
+          department: res.data.department || prev.department || "",
           address: res.data.address || "",
         }));
         setLookupState("success");
@@ -84,8 +90,15 @@ export default function NewPatient() {
       const res = await api.post("/patients", formData);
       toast.success("პაციენტი წარმატებით დაემატა");
       navigate(`/patients/${res.data.id}`);
-    } catch (err) {
-      toast.error("პაციენტის დამატება ვერ მოხერხდა (შესაძლოა ისტორიის # ან პ/ნ უკვე არსებობს)");
+    } catch (err: any) {
+      if (err?.code === "DUPLICATE_PATIENT") {
+        toast.error("პაციენტი უკვე ჩასმულია აღნიშნულ პროგრამაში");
+        if (err?.existingPatientId) {
+          navigate(`/patients/${err.existingPatientId}`);
+        }
+      } else {
+        toast.error("პაციენტის დამატება ვერ მოხერხდა");
+      }
     } finally {
       setLoading(false);
     }
@@ -201,6 +214,41 @@ export default function NewPatient() {
               className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
               value={formData.room}
               onChange={(e) => setFormData({...formData, room: e.target.value})}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">სისხლის ჯგუფი</label>
+            <select
+              className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              value={formData.bloodGroup}
+              onChange={(e) => setFormData({...formData, bloodGroup: e.target.value})}
+            >
+              <option value="">აირჩიეთ</option>
+              <option value="I (O)">I (O)</option>
+              <option value="II (A)">II (A)</option>
+              <option value="III (B)">III (B)</option>
+              <option value="IV (AB)">IV (AB)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">რეზუსი</label>
+            <select
+              className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              value={formData.rhesus}
+              onChange={(e) => setFormData({...formData, rhesus: e.target.value})}
+            >
+              <option value="">აირჩიეთ</option>
+              <option value="Rh+">Rh+</option>
+              <option value="Rh-">Rh-</option>
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">განყოფილება</label>
+            <input
+              type="text"
+              className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
+              value={formData.department}
+              onChange={(e) => setFormData({...formData, department: e.target.value})}
             />
           </div>
           <div className="md:col-span-2">
