@@ -3,7 +3,7 @@ import { HashRouter, Routes, Route, Navigate, useNavigate, Link } from "react-ro
 import { Toaster, toast } from "sonner";
 import { LogOut, User as UserIcon, Search, Plus, FileText, Printer, Save, Trash2, ChevronLeft, LayoutDashboard, Settings, Pencil, Archive } from "lucide-react";
 import api from "./lib/api";
-import clinicLogo from "./assets/clinic-logo.png";
+import tmCenterLogo from "./assets/tm-center-logo.png";
 
 import PatientProfile from "./pages/PatientProfile";
 import StationaryForm from "./pages/StationaryForm";
@@ -12,7 +12,7 @@ import NursingDocumentsPage from "./pages/NursingDocumentsPage";
 import NewPatient from "./pages/NewPatient";
 import AdminUsers from "./pages/AdminUsers";
 
-const APP_LOGO_SRC = clinicLogo;
+const APP_LOGO_SRC = tmCenterLogo;
 
 const getRoleLabel = (role: string) => {
   if (role === "admin") return "ადმინისტრატორი";
@@ -28,16 +28,12 @@ const Layout = ({ children, user, onLogout }: { children: React.ReactNode, user:
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-4">
-          <Link to="/" className="flex items-center gap-3 text-blue-700">
+          <Link to="/" className="flex items-center text-blue-700">
             <img
               src={APP_LOGO_SRC}
-              alt="კლინიკის ლოგო"
-              className="h-11 w-11 shrink-0 object-contain"
+              alt="ინგოროყვას საუნივერსიტეტო კლინიკის ლოგო"
+              className="h-14 w-auto shrink-0 object-contain md:h-16"
             />
-            <div className="flex flex-col leading-none">
-              <span className="mb-1 text-[11px] font-semibold tracking-[0.18em] text-blue-500">ინგოროყვას</span>
-              <span className="text-2xl font-bold text-blue-700">კლინიკა</span>
-            </div>
           </Link>
           <nav className="hidden md:flex items-center gap-6 ml-10">
             <Link to="/" className="text-slate-600 hover:text-blue-700 font-medium transition-colors">მთავარი</Link>
@@ -99,8 +95,8 @@ const Login = ({ onLogin }: { onLogin: (token: string, user: any) => void }) => 
         <div className="text-center mb-8">
           <img
             src={APP_LOGO_SRC}
-            alt="კლინიკის ლოგო"
-            className="mx-auto mb-4 h-20 w-20 object-contain drop-shadow-sm"
+            alt="ინგოროყვას საუნივერსიტეტო კლინიკის ლოგო"
+            className="mx-auto mb-5 h-auto w-full max-w-[320px] object-contain drop-shadow-sm"
           />
           <h1 className="text-2xl font-bold text-slate-900">სისტემაში შესვლა</h1>
           <p className="text-slate-500 mt-2">გთხოვთ გაიაროთ ავტორიზაცია</p>
@@ -188,8 +184,8 @@ const ForcePasswordChange = ({
         <div className="text-center mb-8">
           <img
             src={APP_LOGO_SRC}
-            alt="კლინიკის ლოგო"
-            className="mx-auto mb-4 h-20 w-20 object-contain drop-shadow-sm"
+            alt="ინგოროყვას საუნივერსიტეტო კლინიკის ლოგო"
+            className="mx-auto mb-5 h-auto w-full max-w-[320px] object-contain drop-shadow-sm"
           />
           <h1 className="text-2xl font-bold text-slate-900">პაროლის შეცვლა აუცილებელია</h1>
           <p className="text-slate-500 mt-2">
