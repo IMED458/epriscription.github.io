@@ -4,6 +4,9 @@ import { ChevronLeft, Printer, Save, Plus, Trash2, Copy, FileText, Layout } from
 import api from "../lib/api";
 import { printPrescription } from "../lib/printPrescription";
 import { toast } from "sonner";
+import { DepartmentDatalist, DepartmentSearchInput } from "../components/DepartmentSearchInput";
+
+const DEPARTMENT_LIST_ID = "stationary-department-options";
 
 export default function StationaryForm() {
   const { id } = useParams();
@@ -486,11 +489,12 @@ export default function StationaryForm() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">განყოფილება</label>
-                <input 
-                  type="text" 
+                <DepartmentSearchInput
+                  listId={DEPARTMENT_LIST_ID}
                   className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
                   value={formData.department}
                   onChange={(e) => setFormData({...formData, department: e.target.value})}
+                  placeholder="აირჩიეთ ან მოძებნეთ განყოფილება"
                 />
               </div>
               <div>
@@ -546,6 +550,7 @@ export default function StationaryForm() {
                 )}
               </div>
             </div>
+            <DepartmentDatalist id={DEPARTMENT_LIST_ID} />
 
             <div className="pt-6 border-t border-slate-100">
               <div className="flex items-center justify-between mb-4">

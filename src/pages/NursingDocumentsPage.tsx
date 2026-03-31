@@ -23,6 +23,9 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import '../nursing-documents.css';
 import clinicLogo from '../assets/clinic-logo.png';
+import { DepartmentDatalist, DepartmentSearchInput } from '../components/DepartmentSearchInput';
+
+const DEPARTMENT_LIST_ID = 'nursing-department-options';
 
 // --- Types ---
 
@@ -2664,12 +2667,13 @@ const BloodRequestForm = ({
 
         <div className="blood-request-row">
           <span className="blood-request-label">განყოფილება:</span>
-          <input
+          <DepartmentSearchInput
+            listId={DEPARTMENT_LIST_ID}
             className="blood-request-line"
             style={{ flex: 2 }}
-            type="text"
             value={formData.department}
             onChange={(event) => updateField('department', event.target.value)}
+            placeholder="აირჩიეთ ან მოძებნეთ განყოფილება"
           />
           <span className="blood-request-label">ისტორიის №</span>
           <input
@@ -3232,6 +3236,8 @@ export default function NursingDocumentsPage() {
           </div>
         </div>
       ) : null}
+
+      <DepartmentDatalist id={DEPARTMENT_LIST_ID} />
 
       <div ref={documentRootRef}>
         {currentView === 'dashboard' && (

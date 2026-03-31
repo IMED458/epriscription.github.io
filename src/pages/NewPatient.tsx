@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { ChevronLeft, Save, User as UserIcon } from "lucide-react";
 import api from "../lib/api";
 import { toast } from "sonner";
+import { DepartmentDatalist, DepartmentSearchInput } from "../components/DepartmentSearchInput";
+
+const DEPARTMENT_LIST_ID = "patient-department-options";
 
 export default function NewPatient() {
   const navigate = useNavigate();
@@ -244,11 +247,12 @@ export default function NewPatient() {
           </div>
           <div className="md:col-span-2">
             <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">განყოფილება</label>
-            <input
-              type="text"
+            <DepartmentSearchInput
+              listId={DEPARTMENT_LIST_ID}
               className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
               value={formData.department}
               onChange={(e) => setFormData({...formData, department: e.target.value})}
+              placeholder="აირჩიეთ ან მოძებნეთ განყოფილება"
             />
           </div>
           <div className="md:col-span-2">
@@ -272,6 +276,7 @@ export default function NewPatient() {
             <span>შენახვა</span>
           </button>
         </div>
+        <DepartmentDatalist id={DEPARTMENT_LIST_ID} />
       </form>
     </div>
   );

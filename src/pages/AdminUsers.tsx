@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Plus, Save, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import api from "../lib/api";
+import { DepartmentDatalist, DepartmentSearchInput } from "../components/DepartmentSearchInput";
 
 const ROLE_OPTIONS = [
   { value: "doctor", label: "ექიმი" },
@@ -22,6 +23,8 @@ const defaultForm = {
   department: "",
   role: "doctor",
 };
+
+const DEPARTMENT_LIST_ID = "admin-department-options";
 
 export default function AdminUsers() {
   const [users, setUsers] = useState<any[]>([]);
@@ -157,9 +160,9 @@ export default function AdminUsers() {
             value={createForm.phone}
             onChange={(event) => setCreateForm({ ...createForm, phone: event.target.value })}
           />
-          <input
+          <DepartmentSearchInput
             required
-            type="text"
+            listId={DEPARTMENT_LIST_ID}
             placeholder="განყოფილება"
             className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             value={createForm.department}
@@ -261,8 +264,8 @@ export default function AdminUsers() {
                       {user.isStatic ? (
                         <span className="text-slate-500">{user.department || "-"}</span>
                       ) : (
-                        <input
-                          type="text"
+                        <DepartmentSearchInput
+                          listId={DEPARTMENT_LIST_ID}
                           className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
                           value={user.department || ""}
                           onChange={(event) => handleFieldChange(user.id, "department", event.target.value)}
@@ -329,6 +332,7 @@ export default function AdminUsers() {
             </tbody>
           </table>
         </div>
+        <DepartmentDatalist id={DEPARTMENT_LIST_ID} />
       </div>
     </div>
   );
