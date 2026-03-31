@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { ChevronLeft, Save, User as UserIcon } from "lucide-react";
 import api from "../lib/api";
 import { toast } from "sonner";
@@ -8,8 +8,11 @@ import { DepartmentDatalist, DepartmentSearchInput } from "../components/Departm
 const DEPARTMENT_LIST_ID = "patient-department-options";
 
 export default function NewPatient() {
+  const { id } = useParams();
   const navigate = useNavigate();
+  const isEditMode = Boolean(id);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(isEditMode);
   const [lookupState, setLookupState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [lookupMessage, setLookupMessage] = useState("");
   const [formData, setFormData] = useState({
@@ -27,6 +30,7 @@ export default function NewPatient() {
     address: ""
   });
   const lookupSeqRef = useRef(0);
+  const lookupEnabledRef = useRef(!isEditMode);
 
   const normalizeGender = (value: string, fallback: "male" | "female") => {
     const normalized = String(value || "").trim().toLowerCase();
@@ -40,6 +44,7 @@ export default function NewPatient() {
   };
 
   useEffect(() => {
+    if (!lookupEnabledRef.current) return;
     const historyNumber = formData.historyNumber.trim();
     const requestId = ++lookupSeqRef.current;
 
@@ -86,12 +91,63 @@ export default function NewPatient() {
     };
   }, [formData.historyNumber]);
 
+  useEffect(() => {
+    if (!isEditMode || !id) return;
+
+    let cancelled = false;
+
+    const fetchPatient = async () => {
+      setInitialLoading(true);
+      try {
+        const res = await api.get(`/patients/${id}`);
+        if (cancelled) return;
+        lookupEnabledRef.current = false;
+        setFormData({
+          historyNumber: String(res.data.historyNumber || ""),
+          firstName: String(res.data.firstName || ""),
+          lastName: String(res.data.lastName || ""),
+          personalId: String(res.data.personalId || ""),
+          birthDate: String(res.data.birthDate || ""),
+          gender: normalizeGender(String(res.data.gender || ""), "male"),
+          phone: String(res.data.phone || ""),
+          room: String(res.data.room || ""),
+          bloodGroup: String(res.data.bloodGroup || ""),
+          rhesus: String(res.data.rhesus || ""),
+          department: String(res.data.department || ""),
+          address: String(res.data.address || ""),
+        });
+        setLookupState("idle");
+        setLookupMessage("");
+        window.setTimeout(() => {
+          lookupEnabledRef.current = true;
+        }, 0);
+      } catch (_) {
+        if (!cancelled) {
+          toast.error("პაციენტის მონაცემების ჩატვირთვა ვერ მოხერხდა");
+          navigate("/");
+        }
+      } finally {
+        if (!cancelled) {
+          setInitialLoading(false);
+        }
+      }
+    };
+
+    fetchPatient();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, isEditMode, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await api.post("/patients", formData);
-      toast.success("პაციენტი წარმატებით დაემატა");
+      const res = isEditMode
+        ? await api.put(`/patients/${id}`, formData)
+        : await api.post("/patients", formData);
+      toast.success(isEditMode ? "პაციენტის მონაცემები განახლდა" : "პაციენტი წარმატებით დაემატა");
       navigate(`/patients/${res.data.id}`);
     } catch (err: any) {
       if (err?.code === "DUPLICATE_PATIENT") {
@@ -100,24 +156,28 @@ export default function NewPatient() {
           navigate(`/patients/${err.existingPatientId}`);
         }
       } else {
-        toast.error("პაციენტის დამატება ვერ მოხერხდა");
+        toast.error(isEditMode ? "პაციენტის რედაქტირება ვერ მოხერხდა" : "პაციენტის დამატება ვერ მოხერხდა");
       }
     } finally {
       setLoading(false);
     }
   };
 
+  if (initialLoading) {
+    return <div className="flex items-center justify-center h-64 text-slate-400">იტვირთება...</div>;
+  }
+
   return (
     <div className="space-y-8 max-w-3xl mx-auto">
       <div className="flex items-center gap-4">
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate(isEditMode ? `/patients/${id}` : "/")}
           className="inline-flex items-center gap-2 rounded-2xl bg-blue-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:bg-blue-800 hover:shadow-lg"
         >
           <ChevronLeft size={20} />
           <span>უკან დაბრუნება</span>
         </button>
-        <h1 className="text-3xl font-bold text-slate-900">ახალი პაციენტის დამატება</h1>
+        <h1 className="text-3xl font-bold text-slate-900">{isEditMode ? "პაციენტის რედაქტირება" : "ახალი პაციენტის დამატება"}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-8">
@@ -273,7 +333,7 @@ export default function NewPatient() {
             className="flex items-center gap-2 bg-blue-700 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-800 transition-all shadow-md disabled:opacity-50"
           >
             <Save size={20} />
-            <span>შენახვა</span>
+            <span>{loading ? "მიმდინარეობს..." : isEditMode ? "განახლება" : "შენახვა"}</span>
           </button>
         </div>
         <DepartmentDatalist id={DEPARTMENT_LIST_ID} />

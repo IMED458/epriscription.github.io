@@ -796,6 +796,89 @@ const api = {
       return toResponse(sanitizeUserRecord(nextValue));
     }
 
+    if (path.startsWith("/patients/")) {
+      const user = await ensureDataSession();
+      const patientId = path.slice("/patients/".length);
+      const ref = doc(firebaseDb, "patients", patientId);
+      const current = await getDoc(ref);
+      if (!current.exists()) {
+        throw new Error("Patient not found");
+      }
+
+      const currentValue = normalizeRecord(current.data())!;
+      ensurePatientAccess(user, currentValue);
+
+      const nextHistoryNumber = Object.prototype.hasOwnProperty.call(body || {}, "historyNumber")
+        ? String(body?.historyNumber || "").trim()
+        : String(currentValue.historyNumber || "").trim();
+      const nextPersonalId = Object.prototype.hasOwnProperty.call(body || {}, "personalId")
+        ? String(body?.personalId || "").trim()
+        : String(currentValue.personalId || "").trim();
+      const nextDepartment = Object.prototype.hasOwnProperty.call(body || {}, "department")
+        ? String(body?.department || "").trim()
+        : String(currentValue.department || "").trim();
+
+      const duplicate = (await readAllPatients()).find(
+        (item) =>
+          String(item.id || "") !== patientId &&
+          (
+            String(item.historyNumber || "").trim() === nextHistoryNumber ||
+            String(item.personalId || "").trim() === nextPersonalId
+          )
+      );
+
+      if (duplicate) {
+        throw createApiError("Patient already exists", 409, {
+          code: "DUPLICATE_PATIENT",
+          existingPatientId: String(duplicate.id || ""),
+          existingPatientName: `${duplicate.firstName || ""} ${duplicate.lastName || ""}`.trim(),
+        });
+      }
+
+      if (!nextHistoryNumber || !nextPersonalId) {
+        throw new Error("Invalid patient data");
+      }
+
+      const nextValue = {
+        ...currentValue,
+        historyNumber: nextHistoryNumber,
+        firstName: Object.prototype.hasOwnProperty.call(body || {}, "firstName")
+          ? String(body?.firstName || "").trim()
+          : String(currentValue.firstName || "").trim(),
+        lastName: Object.prototype.hasOwnProperty.call(body || {}, "lastName")
+          ? String(body?.lastName || "").trim()
+          : String(currentValue.lastName || "").trim(),
+        personalId: nextPersonalId,
+        birthDate: Object.prototype.hasOwnProperty.call(body || {}, "birthDate")
+          ? String(body?.birthDate || "")
+          : String(currentValue.birthDate || ""),
+        gender: Object.prototype.hasOwnProperty.call(body || {}, "gender")
+          ? String(body?.gender || "")
+          : String(currentValue.gender || ""),
+        phone: Object.prototype.hasOwnProperty.call(body || {}, "phone")
+          ? String(body?.phone || "").trim()
+          : String(currentValue.phone || "").trim(),
+        room: Object.prototype.hasOwnProperty.call(body || {}, "room")
+          ? String(body?.room || "").trim()
+          : String(currentValue.room || "").trim(),
+        bloodGroup: Object.prototype.hasOwnProperty.call(body || {}, "bloodGroup")
+          ? String(body?.bloodGroup || "").trim()
+          : String(currentValue.bloodGroup || "").trim(),
+        rhesus: Object.prototype.hasOwnProperty.call(body || {}, "rhesus")
+          ? String(body?.rhesus || "").trim()
+          : String(currentValue.rhesus || "").trim(),
+        department: nextDepartment,
+        ownerDepartment: nextDepartment || String(currentValue.ownerDepartment || "").trim(),
+        address: Object.prototype.hasOwnProperty.call(body || {}, "address")
+          ? String(body?.address || "").trim()
+          : String(currentValue.address || "").trim(),
+        updatedAt: nowIso(),
+      };
+
+      await setDoc(ref, nextValue);
+      return toResponse(nextValue);
+    }
+
     if (path.startsWith("/prescriptions/")) {
       await ensureDataSession();
       const prescriptionId = path.slice("/prescriptions/".length);

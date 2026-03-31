@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ChevronLeft, Plus, FileText, ExternalLink, History, User as UserIcon, Calendar, Phone, MapPin, Fingerprint, Printer, Trash2, Building2, ClipboardList, ShieldAlert, ArrowLeftRight, AlertTriangle, Droplets } from "lucide-react";
+import { ChevronLeft, Plus, FileText, ExternalLink, History, User as UserIcon, Calendar, Phone, MapPin, Fingerprint, Printer, Trash2, Building2, ClipboardList, ShieldAlert, ArrowLeftRight, AlertTriangle, Droplets, Pencil } from "lucide-react";
 import api from "../lib/api";
 import { toast } from "sonner";
 
@@ -382,6 +382,22 @@ export default function PatientProfile() {
               </div>
               <ExternalLink size={20} className="text-slate-300 group-hover:text-emerald-700" />
             </a>
+
+            <button
+              onClick={() => navigate(`/patients/${id}/edit`)}
+              className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:border-amber-500 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-amber-50 text-amber-700 rounded-xl flex items-center justify-center group-hover:bg-amber-700 group-hover:text-white transition-all">
+                  <Pencil size={24} />
+                </div>
+                <div className="text-left">
+                  <p className="font-bold text-slate-900">პაციენტის რედაქტირება</p>
+                  <p className="text-xs text-slate-500">პაციენტის მონაცემების შეცვლა</p>
+                </div>
+              </div>
+              <Plus size={20} className="text-slate-300 group-hover:text-amber-700" />
+            </button>
 
             {NURSING_ACTIONS.map((action) => {
               const Icon = action.icon;

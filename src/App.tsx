@@ -330,6 +330,7 @@ export default function App() {
             <Route path="/" element={<Layout user={user} onLogout={handleLogout}><Dashboard /></Layout>} />
             <Route path="/patients" element={<Layout user={user} onLogout={handleLogout}><Dashboard /></Layout>} />
             <Route path="/patients/:id" element={<Layout user={user} onLogout={handleLogout}><PatientProfile /></Layout>} />
+            <Route path="/patients/:id/edit" element={<Layout user={user} onLogout={handleLogout}><NewPatient /></Layout>} />
             <Route path="/patients/:id/stationary" element={<Layout user={user} onLogout={handleLogout}><StationaryForm /></Layout>} />
             <Route path="/patients/:id/nursing" element={<Layout user={user} onLogout={handleLogout}><NursingDocumentsPage /></Layout>} />
             <Route path="/patients/:id/nursing/:docType" element={<Layout user={user} onLogout={handleLogout}><NursingDocumentsPage /></Layout>} />
