@@ -448,6 +448,10 @@ function getPatientOwnerDepartment(patient: Record<string, any> | null | undefin
   return String(patient?.ownerDepartment || patient?.department || "").trim();
 }
 
+function getTemplateOwnerId(template: Record<string, any> | null | undefined) {
+  return String(template?.ownerUserId || template?.createdBy || "").trim();
+}
+
 function canAccessPatient(user: Record<string, any>, patient: Record<string, any>) {
   if (hasGlobalPatientAccess(user)) return true;
   if (String(patient?.createdBy || "") === String(user?.id || "")) return true;
@@ -557,7 +561,7 @@ const api = {
       const user = await ensureDataSession();
       const templates = await readAllTemplates();
       const visible = templates
-        .filter((item) => String(item.createdBy || "") === String(user.id || ""))
+        .filter((item) => getTemplateOwnerId(item) === String(user.id || ""))
         .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
       return toResponse(visible);
     }
@@ -803,9 +807,10 @@ const api = {
         name: String(body?.name || "").trim(),
         type: String(body?.type || "").trim(),
         data: JSON.stringify(body?.data ?? {}),
+        ownerUserId: String(user.id || ""),
         createdBy: user.id,
         createdByName: String(user.name || "").trim(),
-        isGlobal: Boolean(body?.isGlobal),
+        isGlobal: false,
         createdAt: nowIso(),
       };
 
@@ -1066,7 +1071,7 @@ const api = {
         throw new Error("Template not found");
       }
       const template = normalizeRecord(templateSnap.data())!;
-      if (String(template.createdBy || "") !== String(user.id || "") && user.role !== "admin") {
+      if (getTemplateOwnerId(template) !== String(user.id || "") && user.role !== "admin") {
         throw new Error("FORBIDDEN");
       }
       await deleteDoc(templateRef);

@@ -463,12 +463,16 @@ export async function deletePrescription(prescriptionId) {
   return { ok: true };
 }
 
+function getTemplateOwnerId(template) {
+  return String(template?.ownerUserId || template?.createdBy || "").trim();
+}
+
 export async function fetchTemplates(type) {
   const user = await ensureDataSession();
   const snapshot = await getDocs(collection(db, "templates"));
   return snapshot.docs
     .map((item) => normalizeRecord(item.data()))
-    .filter((item) => item.type === type && String(item.createdBy || "") === String(user.id || ""))
+    .filter((item) => item.type === type && getTemplateOwnerId(item) === String(user.id || ""))
     .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
 }
 
@@ -480,9 +484,10 @@ export async function saveTemplate({ name, type, data, isGlobal = false }) {
     name: String(name || "").trim(),
     type: String(type || "").trim(),
     data: JSON.stringify(data ?? {}),
+    ownerUserId: String(user.id || ""),
     createdBy: user.id,
     createdByName: String(user.name || "").trim(),
-    isGlobal: Boolean(isGlobal),
+    isGlobal: false,
     createdAt: nowIso(),
   };
 
@@ -498,7 +503,7 @@ export async function deleteTemplate(templateId) {
     throw new Error("Template not found");
   }
   const template = normalizeRecord(templateSnap.data());
-  if (String(template.createdBy || "") !== String(user.id || "") && user.role !== "admin") {
+  if (getTemplateOwnerId(template) !== String(user.id || "") && user.role !== "admin") {
     throw new Error("FORBIDDEN");
   }
   await deleteDoc(templateRef);
