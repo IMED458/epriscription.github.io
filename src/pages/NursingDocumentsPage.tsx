@@ -22,7 +22,7 @@ import {
 import { toast } from 'sonner';
 import api from '../lib/api';
 import '../nursing-documents.css';
-import clinicLogo from '../assets/clinic-logo.png';
+import tmCenterLogo from '../assets/tm-center-logo.png';
 import { DepartmentDatalist, DepartmentSearchInput } from '../components/DepartmentSearchInput';
 
 const DEPARTMENT_LIST_ID = 'nursing-department-options';
@@ -509,8 +509,8 @@ const isFemaleGender = (value: string) => value === 'ქალი' || value === 
 
 const ClinicLogo = ({ compact = false }: { compact?: boolean }) => (
   <img
-    src={clinicLogo}
-    alt="ინგოროყვას საუნივერსიტეტო კლინიკა HM Center"
+    src={tmCenterLogo}
+    alt="HTMC TM Center"
     className={`clinic-logo ${compact ? 'clinic-logo--compact' : 'clinic-logo--default'}`}
   />
 );
@@ -1536,7 +1536,7 @@ const HandoverChecklist = ({
               <tbody>
                 <tr>
                   <td className="logo-cell" rowSpan={3}>
-                    <img src={clinicLogo} alt="ინგოროყვას საუნივერსიტეტო კლინიკა" className="handover-logo-image" />
+                    <img src={tmCenterLogo} alt="HTMC TM Center" className="handover-logo-image" />
                   </td>
                   <td style={{ width: '150px' }}>პაციენტის სახელი</td>
                   <td><input type="text" value={firstName} onChange={(e) => updateSharedName('first', e.target.value)} /></td>
@@ -2655,7 +2655,7 @@ const BloodRequestForm = ({
 
       <div className="blood-request-card">
         <div className="blood-request-header">
-          <img className="blood-request-logo" src={clinicLogo} alt="ინგოროყვას კლინიკა" />
+          <img className="blood-request-logo" src={tmCenterLogo} alt="HTMC TM Center" />
           <div className="blood-request-org-ka">ინგოროყვას საუნივერსიტეტო კლინიკა</div>
           <div className="blood-request-org-en">Ingorokva University Clinic</div>
           <div className="blood-request-org-dept">სისხლის ბანკი და კლინიკური ტრანსფუზიოლოგიის დეპარტამენტი</div>
