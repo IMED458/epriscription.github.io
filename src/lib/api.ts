@@ -20,10 +20,24 @@ const STATIC_USERS = [
     role: "admin",
     name: "ადმინისტრატორი",
     phone: "",
-    department: "",
+    department: "ადმინისტრაცია",
+    mustChangePassword: false,
   },
 ];
-const MANAGED_USER_ROLES = new Set(["doctor", "nurse", "junior_doctor"]);
+const DEFAULT_MANAGED_USERS = [
+  {
+    id: "seed-giorgi-imedashvili",
+    username: "giorgi.imedashvili",
+    password: "Temp12345!",
+    role: "admin",
+    name: "გიორგი იმედაშვილი",
+    phone: "",
+    department: "ადმინისტრაცია",
+    mustChangePassword: true,
+  },
+];
+const MANAGED_USER_ROLES = new Set(["admin", "doctor", "nurse", "junior_doctor"]);
+const ADMINISTRATION_DEPARTMENT = "ადმინისტრაცია";
 
 function nowIso() {
   return new Date().toISOString();
@@ -384,6 +398,7 @@ function sanitizeUserRecord(user: Record<string, any>) {
     name: String(user.name || ""),
     phone: String(user.phone || ""),
     department: String(user.department || ""),
+    mustChangePassword: Boolean(user.mustChangePassword),
     createdAt: user.createdAt || "",
     updatedAt: user.updatedAt || "",
     isStatic: Boolean(user.isStatic),
@@ -421,12 +436,20 @@ function getUserDepartment(user: Record<string, any> | null | undefined) {
   return String(user?.department || "").trim();
 }
 
+function hasAdministrationDepartment(user: Record<string, any> | null | undefined) {
+  return getUserDepartment(user) === ADMINISTRATION_DEPARTMENT;
+}
+
+function hasGlobalPatientAccess(user: Record<string, any> | null | undefined) {
+  return String(user?.role || "") === "admin" || hasAdministrationDepartment(user);
+}
+
 function getPatientOwnerDepartment(patient: Record<string, any> | null | undefined) {
   return String(patient?.ownerDepartment || patient?.department || "").trim();
 }
 
 function canAccessPatient(user: Record<string, any>, patient: Record<string, any>) {
-  if (user?.role === "admin") return true;
+  if (hasGlobalPatientAccess(user)) return true;
   if (String(patient?.createdBy || "") === String(user?.id || "")) return true;
 
   const patientDepartment = getPatientOwnerDepartment(patient);
@@ -464,7 +487,28 @@ async function readAllTemplates() {
 
 async function readAllUsers() {
   const snapshot = await getDocs(collection(firebaseDb, "users"));
-  return snapshot.docs.map((item) => normalizeRecord(item.data())!);
+  const users = snapshot.docs.map((item) => normalizeRecord(item.data())!);
+  const normalizedExistingUsernames = new Set(users.map((item) => normalizeUsername(item.username)));
+  const defaultUsersToCreate = DEFAULT_MANAGED_USERS.filter((seedUser) => !normalizedExistingUsernames.has(normalizeUsername(seedUser.username)));
+
+  if (defaultUsersToCreate.length > 0) {
+    const createdAt = nowIso();
+    await Promise.all(defaultUsersToCreate.map((seedUser) => setDoc(doc(firebaseDb, "users", seedUser.id), {
+      ...seedUser,
+      createdAt,
+      updatedAt: createdAt,
+    })));
+    return [
+      ...users,
+      ...defaultUsersToCreate.map((seedUser) => ({
+        ...seedUser,
+        createdAt,
+        updatedAt: createdAt,
+      })),
+    ];
+  }
+
+  return users;
 }
 
 async function fetchRegistryPatient(historyNumber: string) {
@@ -494,7 +538,7 @@ const api = {
           ...getStaticUsers().map(sanitizeUserRecord),
           ...storedUsers.map(sanitizeUserRecord),
         ].filter((item) => {
-          if (user.role === "admin") return true;
+          if (hasGlobalPatientAccess(user)) return true;
           if (!userDepartment) return String(item.id || "") === String(user.id || "");
           if (!item.department) return false;
           return String(item.department || "") === userDepartment;
@@ -608,6 +652,36 @@ const api = {
       });
     }
 
+    if (path === "/auth/change-password") {
+      const sessionUser = await ensureDataSession();
+      const newPassword = String(body?.newPassword || "");
+
+      if (!newPassword.trim() || newPassword.trim().length < 6) {
+        throw new Error("Password is too short");
+      }
+
+      const managedUserRecord = (await readAllUsers()).find((item) => String(item.id || "") === String(sessionUser.id || ""));
+      if (!managedUserRecord) {
+        throw new Error("User not found");
+      }
+
+      const nextValue = {
+        ...managedUserRecord,
+        password: newPassword.trim(),
+        mustChangePassword: false,
+        updatedAt: nowIso(),
+      };
+
+      await setDoc(doc(firebaseDb, "users", String(managedUserRecord.id)), nextValue);
+
+      return toResponse({
+        token: firebaseAuth.currentUser
+          ? await firebaseAuth.currentUser.getIdToken()
+          : "firebase-anonymous",
+        user: sanitizeUserRecord(nextValue),
+      });
+    }
+
     if (path === "/users") {
       const user = await ensureDataSession();
       ensureAdminUser(user);
@@ -635,6 +709,7 @@ const api = {
         name,
         phone,
         department,
+        mustChangePassword: true,
         createdAt,
         updatedAt: createdAt,
       };
@@ -789,6 +864,9 @@ const api = {
         phone: nextPhone,
         department: nextDepartment,
         password: nextPassword,
+        mustChangePassword: Object.prototype.hasOwnProperty.call(body || {}, "password")
+          ? true
+          : Boolean(currentValue.mustChangePassword),
         updatedAt: nowIso(),
       };
 

@@ -5,6 +5,7 @@ import api from "../lib/api";
 import { DepartmentDatalist, DepartmentSearchInput } from "../components/DepartmentSearchInput";
 
 const ROLE_OPTIONS = [
+  { value: "admin", label: "ადმინისტრატორი" },
   { value: "doctor", label: "ექიმი" },
   { value: "junior_doctor", label: "უმცროსი ექიმი" },
   { value: "nurse", label: "ექთანი" },
@@ -116,7 +117,7 @@ export default function AdminUsers() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-slate-900">მომხმარებლების მართვა</h1>
-        <p className="text-slate-500">შექმენი, შეცვალე, წაშალე და საჭიროების შემთხვევაში პაროლიც აღუდგინე</p>
+        <p className="text-slate-500">შექმენი, შეცვალე, წაშალე და ერთჯერადი პაროლი დააყენე. პირველი შესვლისას პაროლის შეცვლა სავალდებულოა.</p>
       </div>
 
       <form onSubmit={handleCreateUser} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
@@ -147,7 +148,7 @@ export default function AdminUsers() {
           <input
             required
             type="text"
-            placeholder="პაროლი"
+            placeholder="ერთჯერადი პაროლი"
             className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             value={createForm.password}
             onChange={(event) => setCreateForm({ ...createForm, password: event.target.value })}
@@ -228,12 +229,19 @@ export default function AdminUsers() {
                           <div className="text-xs text-slate-500">სისტემური ანგარიში</div>
                         </>
                       ) : (
-                        <input
-                          type="text"
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                          value={user.name}
-                          onChange={(event) => handleFieldChange(user.id, "name", event.target.value)}
-                        />
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                            value={user.name}
+                            onChange={(event) => handleFieldChange(user.id, "name", event.target.value)}
+                          />
+                          {user.mustChangePassword ? (
+                            <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-amber-700">
+                              ელოდება პაროლის შეცვლას
+                            </span>
+                          ) : null}
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-4">
@@ -296,7 +304,7 @@ export default function AdminUsers() {
                         <input
                           type="text"
                           className="w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="ახალი პაროლი"
+                          placeholder="ერთჯერადი პაროლი"
                           value={user.nextPassword || ""}
                           onChange={(event) => handleFieldChange(user.id, "nextPassword", event.target.value)}
                         />

@@ -84,7 +84,7 @@ const Login = ({ onLogin }: { onLogin: (token: string, user: any) => void }) => 
     try {
       const res = await api.post("/auth/login", { username, password });
       onLogin(res.data.token, res.data.user);
-      toast.success("წარმატებული ავტორიზაცია");
+      toast.success(res.data.user?.mustChangePassword ? "პაროლი ერთჯერადია, შეცვლა სავალდებულოა" : "წარმატებული ავტორიზაცია");
     } catch (err) {
       toast.error("არასწორი მომხმარებელი ან პაროლი");
     } finally {
@@ -138,6 +138,98 @@ const Login = ({ onLogin }: { onLogin: (token: string, user: any) => void }) => 
         <div className="mt-8 pt-6 border-t border-slate-100 text-center">
           <p className="text-xs text-slate-400 uppercase tracking-widest">კლინიკის მართვის პლატფორმა</p>
         </div>
+      </div>
+    </div>
+  );
+};
+
+const ForcePasswordChange = ({
+  user,
+  onComplete,
+  onLogout,
+}: {
+  user: any;
+  onComplete: (token: string, user: any) => void;
+  onLogout: () => void;
+}) => {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (newPassword.trim().length < 6) {
+      toast.error("პაროლი მინიმუმ 6 სიმბოლო უნდა იყოს");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error("პაროლები ერთმანეთს არ ემთხვევა");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await api.post("/auth/change-password", { newPassword });
+      onComplete(response.data.token, response.data.user);
+      toast.success("პაროლი წარმატებით შეიცვალა");
+    } catch (_) {
+      toast.error("პაროლის შეცვლა ვერ მოხერხდა");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
+      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-200">
+        <div className="text-center mb-8">
+          <img
+            src={APP_LOGO_SRC}
+            alt="კლინიკის ლოგო"
+            className="mx-auto mb-4 h-20 w-20 object-contain drop-shadow-sm"
+          />
+          <h1 className="text-2xl font-bold text-slate-900">პაროლის შეცვლა აუცილებელია</h1>
+          <p className="text-slate-500 mt-2">
+            {user?.name || user?.username}, სისტემაში შესასვლელად ახალი პაროლი უნდა დააყენო.
+          </p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">ახალი პაროლი</label>
+            <input
+              type="password"
+              required
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">გაიმეორე ახალი პაროლი</label>
+            <input
+              type="password"
+              required
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-700 text-white py-3 rounded-xl font-semibold hover:bg-blue-800 transition-all shadow-md disabled:opacity-50"
+          >
+            {loading ? "მიმდინარეობს..." : "პაროლის შეცვლა"}
+          </button>
+        </form>
+        <button
+          onClick={onLogout}
+          className="mt-6 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 transition-all hover:bg-slate-50"
+        >
+          გამოსვლა
+        </button>
       </div>
     </div>
   );
@@ -345,6 +437,8 @@ export default function App() {
       <Routes>
         {!user ? (
           <Route path="*" element={<Login onLogin={handleLogin} />} />
+        ) : user?.mustChangePassword ? (
+          <Route path="*" element={<ForcePasswordChange user={user} onComplete={handleLogin} onLogout={handleLogout} />} />
         ) : (
           <>
             <Route path="/" element={<Layout user={user} onLogout={handleLogout}><Dashboard /></Layout>} />
