@@ -122,11 +122,7 @@ export default function PatientProfile() {
   };
 
   const handleBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1);
-      return;
-    }
-    navigate(patient?.archived ? "/archive" : "/");
+    navigate("/");
   };
 
   useEffect(() => {
