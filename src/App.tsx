@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { HashRouter, Routes, Route, Navigate, useNavigate, Link } from "react-router-dom";
 import { Toaster, toast } from "sonner";
-import { LogOut, User as UserIcon, Search, Plus, FileText, Printer, Save, Trash2, ChevronLeft, LayoutDashboard, Settings } from "lucide-react";
+import { LogOut, User as UserIcon, Search, Plus, FileText, Printer, Save, Trash2, ChevronLeft, LayoutDashboard, Settings, Pencil } from "lucide-react";
 import api from "./lib/api";
 import clinicLogo from "./assets/clinic-logo.png";
 
@@ -277,7 +277,27 @@ const Dashboard = () => {
                     <td className="px-6 py-4 text-slate-600">{p.personalId}</td>
                     <td className="px-6 py-4 text-slate-600">{p.phone || '-'}</td>
                     <td className="px-6 py-4">
-                      <button className="text-blue-700 hover:text-blue-900 font-medium">პროფილი</button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            navigate(`/patients/${p.id}`);
+                          }}
+                          className="text-blue-700 hover:text-blue-900 font-medium"
+                        >
+                          პროფილი
+                        </button>
+                        <button
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            navigate(`/patients/${p.id}/edit`);
+                          }}
+                          className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
+                        >
+                          <Pencil size={14} />
+                          <span>რედაქტირება</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
