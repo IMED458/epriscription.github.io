@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { HashRouter, Routes, Route, Navigate, useNavigate, Link } from "react-router-dom";
 import { Toaster, toast } from "sonner";
-import { LogOut, User as UserIcon, Search, Plus, FileText, Printer, Save, Trash2, ChevronLeft, LayoutDashboard, Settings, Pencil } from "lucide-react";
+import { LogOut, User as UserIcon, Search, Plus, FileText, Printer, Save, Trash2, ChevronLeft, LayoutDashboard, Settings, Pencil, Archive } from "lucide-react";
 import api from "./lib/api";
 import clinicLogo from "./assets/clinic-logo.png";
 
@@ -42,6 +42,7 @@ const Layout = ({ children, user, onLogout }: { children: React.ReactNode, user:
           <nav className="hidden md:flex items-center gap-6 ml-10">
             <Link to="/" className="text-slate-600 hover:text-blue-700 font-medium transition-colors">მთავარი</Link>
             <Link to="/patients" className="text-slate-600 hover:text-blue-700 font-medium transition-colors">პაციენტები</Link>
+            <Link to="/archive" className="text-slate-600 hover:text-blue-700 font-medium transition-colors">არქივი</Link>
             {user?.role === "admin" && (
               <Link to="/admin/users" className="text-slate-600 hover:text-blue-700 font-medium transition-colors">მომხმარებლები</Link>
             )}
@@ -235,7 +236,7 @@ const ForcePasswordChange = ({
   );
 };
 
-const Dashboard = () => {
+const Dashboard = ({ showArchived = false }: { showArchived?: boolean }) => {
   const [patients, setPatients] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -290,45 +291,73 @@ const Dashboard = () => {
   };
 
   const filteredPatients = patients.filter(p => 
-    p.firstName.toLowerCase().includes(search.toLowerCase()) ||
-    p.lastName.toLowerCase().includes(search.toLowerCase()) ||
-    p.personalId.includes(search) ||
-    p.historyNumber.includes(search)
+    Boolean(p.archived) === showArchived &&
+    (
+      p.firstName.toLowerCase().includes(search.toLowerCase()) ||
+      p.lastName.toLowerCase().includes(search.toLowerCase()) ||
+      p.personalId.includes(search) ||
+      p.historyNumber.includes(search)
+    )
   );
+
+  const handleArchiveToggle = async (patient: any) => {
+    const nextArchived = !Boolean(patient.archived);
+    const confirmMessage = nextArchived
+      ? `ნამდვილად გსურთ "${patient.firstName} ${patient.lastName}" არქივში გადატანა?`
+      : `ნამდვილად გსურთ "${patient.firstName} ${patient.lastName}" არქივიდან დაბრუნება?`;
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      await api.put(`/patients/${patient.id}`, { archived: nextArchived });
+      toast.success(nextArchived ? "პაციენტი არქივში გადავიდა" : "პაციენტი არქივიდან დაბრუნდა");
+      fetchPatients();
+    } catch (_) {
+      toast.error(nextArchived ? "პაციენტის არქივში გადატანა ვერ მოხერხდა" : "პაციენტის აღდგენა ვერ მოხერხდა");
+    }
+  };
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">პაციენტების მართვა</h1>
-          <p className="text-slate-500">მოძებნეთ ან დაამატეთ ახალი პაციენტი</p>
+          <h1 className="text-3xl font-bold text-slate-900">{showArchived ? "პაციენტების არქივი" : "პაციენტების მართვა"}</h1>
+          <p className="text-slate-500">
+            {showArchived
+              ? "აქ გადმოდის გაწერილი და ძველი პაციენტები"
+              : "მოძებნეთ ან დაამატეთ ახალი პაციენტი"}
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <input 
-              type="text" 
-              placeholder="ისტორიის # (გარე რეესტრი)" 
-              className="pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none w-64 shadow-sm"
-              value={sheetSearch}
-              onChange={(e) => setSheetSearch(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSheetSearch()}
-            />
+        {!showArchived && (
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <input 
+                type="text" 
+                placeholder="ისტორიის # (გარე რეესტრი)" 
+                className="pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none w-64 shadow-sm"
+                value={sheetSearch}
+                onChange={(e) => setSheetSearch(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSheetSearch()}
+              />
+              <button 
+                onClick={handleSheetSearch}
+                disabled={sheetLoading}
+                className="absolute right-2 top-1.5 p-1.5 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-all disabled:opacity-50"
+              >
+                <Search size={18} />
+              </button>
+            </div>
             <button 
-              onClick={handleSheetSearch}
-              disabled={sheetLoading}
-              className="absolute right-2 top-1.5 p-1.5 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-all disabled:opacity-50"
+              onClick={() => navigate("/patients/new")}
+              className="flex items-center gap-2 bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-800 transition-all shadow-md"
             >
-              <Search size={18} />
+              <Plus size={20} />
+              <span>დამატება</span>
             </button>
           </div>
-          <button 
-            onClick={() => navigate("/patients/new")}
-            className="flex items-center gap-2 bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-800 transition-all shadow-md"
-          >
-            <Plus size={20} />
-            <span>დამატება</span>
-          </button>
-        </div>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -350,44 +379,62 @@ const Dashboard = () => {
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">პაციენტი</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">პირადი ნომერი</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">ტელეფონი</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">მოქმედება</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 text-center">მოქმედება</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr><td colSpan={5} className="px-6 py-10 text-center text-slate-400">იტვირთება...</td></tr>
               ) : filteredPatients.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-10 text-center text-slate-400">პაციენტები არ მოიძებნა</td></tr>
+                <tr><td colSpan={5} className="px-6 py-10 text-center text-slate-400">{showArchived ? "არქივში პაციენტები არ არის" : "პაციენტები არ მოიძებნა"}</td></tr>
               ) : (
                 filteredPatients.map(p => (
                   <tr key={p.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => navigate(`/patients/${p.id}`)}>
                     <td className="px-6 py-4 font-mono text-blue-700 font-semibold">{p.historyNumber}</td>
                     <td className="px-6 py-4">
                       <div className="font-semibold text-slate-900">{p.firstName} {p.lastName}</div>
-                      <div className="text-xs text-slate-500">{p.gender === 'male' ? 'მამრობითი' : 'მდედრობითი'}</div>
+                      <div className="text-xs text-slate-500">
+                        {p.gender === 'male' ? 'მამრობითი' : 'მდედრობითი'}
+                        {Boolean(p.archived) && p.archivedAt ? ` • არქივი: ${new Date(p.archivedAt).toLocaleDateString('ka-GE')}` : ""}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-slate-600">{p.personalId}</td>
                     <td className="px-6 py-4 text-slate-600">{p.phone || '-'}</td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={(event) => {
                             event.stopPropagation();
                             navigate(`/patients/${p.id}`);
                           }}
-                          className="text-blue-700 hover:text-blue-900 font-medium"
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-blue-700 transition-all hover:bg-blue-50 hover:text-blue-900"
+                          title="პროფილი"
                         >
-                          პროფილი
+                          <UserIcon size={18} />
                         </button>
                         <button
                           onClick={(event) => {
                             event.stopPropagation();
                             navigate(`/patients/${p.id}/edit`);
                           }}
-                          className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-amber-700 transition-all hover:bg-amber-50 hover:text-amber-900"
+                          title="რედაქტირება"
                         >
-                          <Pencil size={14} />
-                          <span>რედაქტირება</span>
+                          <Pencil size={18} />
+                        </button>
+                        <button
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleArchiveToggle(p);
+                          }}
+                          className={`inline-flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
+                            showArchived
+                              ? "text-emerald-700 hover:bg-emerald-50 hover:text-emerald-900"
+                              : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                          }`}
+                          title={showArchived ? "არქივიდან დაბრუნება" : "არქივში გადატანა"}
+                        >
+                          <Archive size={18} />
                         </button>
                       </div>
                     </td>
@@ -443,6 +490,7 @@ export default function App() {
           <>
             <Route path="/" element={<Layout user={user} onLogout={handleLogout}><Dashboard /></Layout>} />
             <Route path="/patients" element={<Layout user={user} onLogout={handleLogout}><Dashboard /></Layout>} />
+            <Route path="/archive" element={<Layout user={user} onLogout={handleLogout}><Dashboard showArchived /></Layout>} />
             <Route path="/patients/:id" element={<Layout user={user} onLogout={handleLogout}><PatientProfile /></Layout>} />
             <Route path="/patients/:id/edit" element={<Layout user={user} onLogout={handleLogout}><NewPatient /></Layout>} />
             <Route path="/patients/:id/stationary" element={<Layout user={user} onLogout={handleLogout}><StationaryForm /></Layout>} />

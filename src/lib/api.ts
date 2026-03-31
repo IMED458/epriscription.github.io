@@ -739,6 +739,10 @@ const api = {
         ownerDepartment: getUserDepartment(user) || String(body?.department || "").trim(),
         createdBy: String(user.id || ""),
         createdByName: String(user.name || "").trim(),
+        archived: false,
+        archivedAt: "",
+        archivedBy: "",
+        archivedByName: "",
         address: body?.address || "",
         createdAt: nowIso(),
         updatedAt: nowIso(),
@@ -895,6 +899,10 @@ const api = {
       const nextDepartment = Object.prototype.hasOwnProperty.call(body || {}, "department")
         ? String(body?.department || "").trim()
         : String(currentValue.department || "").trim();
+      const currentArchived = Boolean(currentValue.archived);
+      const nextArchived = Object.prototype.hasOwnProperty.call(body || {}, "archived")
+        ? Boolean(body?.archived)
+        : currentArchived;
 
       const duplicate = (await readAllPatients()).find(
         (item) =>
@@ -947,6 +955,16 @@ const api = {
           : String(currentValue.rhesus || "").trim(),
         department: nextDepartment,
         ownerDepartment: nextDepartment || String(currentValue.ownerDepartment || "").trim(),
+        archived: nextArchived,
+        archivedAt: nextArchived
+          ? (currentArchived ? String(currentValue.archivedAt || "") : nowIso())
+          : "",
+        archivedBy: nextArchived
+          ? (currentArchived ? String(currentValue.archivedBy || "") : String(user.id || ""))
+          : "",
+        archivedByName: nextArchived
+          ? (currentArchived ? String(currentValue.archivedByName || "") : String(user.name || "").trim())
+          : "",
         address: Object.prototype.hasOwnProperty.call(body || {}, "address")
           ? String(body?.address || "").trim()
           : String(currentValue.address || "").trim(),

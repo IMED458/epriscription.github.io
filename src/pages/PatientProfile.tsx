@@ -121,6 +121,14 @@ export default function PatientProfile() {
     return nextUrl.toString();
   };
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate(patient?.archived ? "/archive" : "/");
+  };
+
   useEffect(() => {
     fetchPatient();
   }, [id]);
@@ -247,7 +255,7 @@ export default function PatientProfile() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex items-center gap-4">
         <button 
-          onClick={() => navigate("/")}
+          onClick={handleBack}
           className="inline-flex items-center gap-2 rounded-2xl bg-blue-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:bg-blue-800 hover:shadow-lg"
         >
           <ChevronLeft size={20} />
@@ -267,6 +275,11 @@ export default function PatientProfile() {
               </div>
               <h2 className="text-2xl font-bold text-slate-900">{patient.firstName} {patient.lastName}</h2>
               <p className="text-blue-700 font-mono font-bold mt-1 tracking-wider">ისტორია: #{patient.historyNumber}</p>
+              {patient.archived && (
+                <div className="mt-3 inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
+                  არქივშია
+                </div>
+              )}
               
               <div className="mt-8 space-y-4">
                 <div className="flex items-center gap-3 text-slate-600">
