@@ -141,7 +141,7 @@ const createInitialBloodRequest = (patientInfo: PatientInfo = createInitialPatie
   time: '',
   patient_name: String(patientInfo.name || ''),
   blood_group: String(patientInfo.bloodGroup || ''),
-  rhesus: String(patientInfo.rhesus || ''),
+  rhesus: normalizeRhesusValue(String(patientInfo.rhesus || '')),
   diagnosis: '',
   transfusion_indication: '',
   eritro: false,
@@ -180,6 +180,17 @@ const normalizePatientGender = (value: string) => {
   return String(value || '').trim();
 };
 
+const normalizeRhesusValue = (value: string) => {
+  const raw = String(value || '').trim();
+  const normalized = raw.toLowerCase();
+
+  if (!raw) return '';
+  if (normalized.includes('დადებითი') || raw.includes('+')) return 'Rh+';
+  if (normalized.includes('უარყოფითი') || raw.includes('-') || raw.includes('−')) return 'Rh-';
+
+  return raw;
+};
+
 const calculateAge = (value: string) => {
   if (!value) return '';
   const birthDate = new Date(value);
@@ -203,7 +214,7 @@ const buildPatientInfoFromPatient = (patient: any, user: any): PatientInfo => ({
   date: createInitialPatientInfo().date,
   department: String(patient?.department || user?.department || ''),
   bloodGroup: String(patient?.bloodGroup || ''),
-  rhesus: String(patient?.rhesus || ''),
+  rhesus: normalizeRhesusValue(String(patient?.rhesus || '')),
 });
 
 const serializeDomFields = (root: HTMLElement | null): SerializedField[] => {
@@ -250,6 +261,7 @@ const mergeBloodRequestData = (
 ): BloodRequestFormData => ({
   ...base,
   ...(incoming || {}),
+  rhesus: normalizeRhesusValue(String(incoming?.rhesus ?? base.rhesus ?? '')),
   eritro: Boolean(incoming?.eritro ?? base.eritro),
   plasma: Boolean(incoming?.plasma ?? base.plasma),
   trombo: Boolean(incoming?.trombo ?? base.trombo),
@@ -2722,8 +2734,8 @@ const BloodRequestForm = ({
             onChange={(event) => updateField('rhesus', event.target.value)}
           >
             <option value="">-- რეზუს --</option>
-            <option value="Rh+ (დადებითი)">Rh+ (დადებითი)</option>
-            <option value="Rh− (უარყოფითი)">Rh− (უარყოფითი)</option>
+            <option value="Rh+">Rh+ (დადებითი)</option>
+            <option value="Rh-">Rh- (უარყოფითი)</option>
           </select>
         </div>
 
@@ -2969,7 +2981,7 @@ export default function NursingDocumentsPage() {
       history_number: patientInfo.historyNum || current.history_number,
       patient_name: patientInfo.name || current.patient_name,
       blood_group: patientInfo.bloodGroup || current.blood_group,
-      rhesus: patientInfo.rhesus || current.rhesus,
+      rhesus: normalizeRhesusValue(patientInfo.rhesus || current.rhesus),
       request_date: current.request_date || patientInfo.date || createInitialPatientInfo().date,
       doctor: current.doctor || String(currentUser?.name || ''),
     }));
