@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { HashRouter, Routes, Route, Navigate, useNavigate, Link } from "react-router-dom";
 import { Toaster, toast } from "sonner";
-import { LogOut, User as UserIcon, Search, Plus, FileText, Printer, Save, Trash2, ChevronLeft, LayoutDashboard, Settings, Pencil, Archive } from "lucide-react";
+import { LogOut, User as UserIcon, Search, Plus, FileText, Printer, Save, Trash2, ChevronLeft, LayoutDashboard, Settings, Pencil, Archive, Eye, EyeOff } from "lucide-react";
 import api from "./lib/api";
 import tmCenterLogo from "./assets/tm-center-logo.png";
 
@@ -73,6 +73,7 @@ const Layout = ({ children, user, onLogout }: { children: React.ReactNode, user:
 const Login = ({ onLogin }: { onLogin: (token: string, user: any) => void }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -115,14 +116,24 @@ const Login = ({ onLogin }: { onLogin: (token: string, user: any) => void }) => 
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">პაროლი</label>
-            <input 
-              type="password" 
-              required 
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-            />
+            <div className="relative">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                required 
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 pr-12 outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((current) => !current)}
+                className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-slate-400 transition-all hover:text-blue-700"
+                title={showPassword ? "პაროლის დამალვა" : "პაროლის ჩვენება"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
           <button 
             type="submit" 
@@ -151,6 +162,8 @@ const ForcePasswordChange = ({
 }) => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -195,23 +208,43 @@ const ForcePasswordChange = ({
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">ახალი პაროლი</label>
-            <input
-              type="password"
-              required
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-              value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
-            />
+            <div className="relative">
+              <input
+                type={showNewPassword ? "text" : "password"}
+                required
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 pr-12 outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword((current) => !current)}
+                className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-slate-400 transition-all hover:text-blue-700"
+                title={showNewPassword ? "პაროლის დამალვა" : "პაროლის ჩვენება"}
+              >
+                {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">გაიმეორე ახალი პაროლი</label>
-            <input
-              type="password"
-              required
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-            />
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                required
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 pr-12 outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((current) => !current)}
+                className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-slate-400 transition-all hover:text-blue-700"
+                title={showConfirmPassword ? "პაროლის დამალვა" : "პაროლის ჩვენება"}
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
           <button
             type="submit"
